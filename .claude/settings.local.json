@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($mem = \"C:\\\\Users\\\\Khang\\\\.claude\\\\projects\\\\C--Users-Khang-Desktop-Final-Project-2\\\\memory\"; if \\(Test-Path $mem\\) { Get-ChildItem $mem -Recurse | Select-Object Name, Length; Write-Output \"=== MEMORY.md ===\"; if \\(Test-Path \"$mem\\\\MEMORY.md\"\\) { Get-Content \"$mem\\\\MEMORY.md\" -Raw } } else { Write-Output \"No memory dir yet\" })",
+      "PowerShell($py = \"C:\\\\Users\\\\Khang\\\\Desktop\\\\Final Project 2\\\\venv\\\\Scripts\\\\python.exe\"; if \\(Test-Path $py\\) { & $py --version; Write-Output \"--- installed \\(ML-relevant\\) ---\"; & $py -m pip list 2>$null | Select-String -Pattern \"scikit-learn|xgboost|lightgbm|joblib|torch|pandas|numpy|matplotlib|seaborn\" } else { Write-Output \"venv python NOT found at $py\" })"
+    ]
+  }
+}
