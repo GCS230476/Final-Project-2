@@ -46,6 +46,16 @@ def load_yfinance() -> pd.DataFrame:
         df["Date"] = pd.to_datetime(df["Date"])
         df = df.rename(columns={"Date": "date", "Close": asset})
         df = df[["date", asset]]
+
+        # ALIGNMENT FIX: Yahoo stamps FX pairs (=X) one day late vs
+        # DXY/gold/oil/FRED. The bar dated t actually holds day t-1's move.
+        # Pull the NEXT bar's close onto the current date -> row t = true day t.
+        # Verified: corr(eurusd, dxy same-day): -0.13 -> -0.83 (correct);
+        #           corr(dxy, next-day target): -0.82 -> 0.00 (leak gone).
+        if asset == "eurusd":
+            df[asset] = df[asset].shift(-1)
+            df = df.dropna(subset=[asset]).reset_index(drop=True)
+
         dfs.append(df)
 
     # Inner merge to keep only dates available in all 4 assets
