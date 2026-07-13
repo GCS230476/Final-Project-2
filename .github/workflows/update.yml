@@ -18,6 +18,6 @@ jobs:
       - run: |
           git config user.name "auto-update"
           git config user.email "auto@update"
-          git add data/processed/fx_features_live.csv data/interim/fx_master_dataset.csv data/raw
+          git add data/processed/fx_features_live.csv data/interim/fx_master_dataset.csv
           git diff --cached --quiet || git commit -m "Auto data update"
           git push
