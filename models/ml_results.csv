@@ -1,0 +1,4 @@
+,Train %,Val %,Test %
+Random Forest,75.89,51.53,47.92
+XGBoost,76.24,50.43,44.01
+LightGBM,78.31,51.9,45.72

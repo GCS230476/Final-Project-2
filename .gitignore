@@ -10,6 +10,7 @@ __pycache__/
 
 # Virtual environment
 venv/
+venv_dl/
 env/
 
 # IDE
@@ -26,19 +27,23 @@ Thumbs.db
 # Deprecated files
 src/_deprecated/
 
-# Data (regenerate bằng script trong src/data/)
+# Data: block by default, EXCEPT files the deployed app needs
 data/raw/
-data/interim/
-data/processed/
+data/interim/*
+!data/interim/fx_master_dataset.csv
+data/processed/*
+!data/processed/fx_features.csv
+!data/processed/fx_features_live.csv
 
-# Models output
-models/*.pkl
-models/*.joblib
+# Models: .pkl/.pt are needed by the deployed app -> NOT ignored
 models/*.h5
 
-# Figures output 
+# Figures output
 # figures/**/*.png
-# figures/**/*.jpg
 
 # Logs
 *.log
+
+# Streamlit skills symlinks
+.agents/
+.claude/
