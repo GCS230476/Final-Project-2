@@ -1,7 +1,9 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import streamlit as st
 
-from app_core import load_results, next_chapter
+from app_core import (C_DL, C_GRAY, C_ML, load_results, next_chapter)
 
 st.markdown(
     "Twenty models were trained: **4 tasks × 5 algorithms**. Two families "
@@ -90,16 +92,48 @@ st.subheader("Same food, opposite table manners")
 res = load_results()
 if "direction" in res:
     d = res["direction"]
+
+    fig, ax = plt.subplots(figsize=(10, 4.2))
+    x = np.arange(len(d))
+    w = 0.38
+    is_dl = [m.startswith(("LSTM", "GRU")) for m in d.index]
+    ax.bar(x - w / 2, d["train"], w, label="Train accuracy", color=C_GRAY)
+    ax.bar(x + w / 2, d["val"], w, label="Validation accuracy",
+           color=[C_DL if f else C_ML for f in is_dl])
+    ax.axhline(50, color="#e6e9ef", lw=0.6, ls=":")
+    for i, (tr, va) in enumerate(zip(d["train"], d["val"])):
+        gap = tr - va
+        ax.text(i, max(tr, va) + 1, f"{gap:+.0f}", ha="center",
+                fontsize=8, color="#e6e9ef")
+    ax.set_xticks(x)
+    ax.set_xticklabels(d.index, rotation=35, ha="right", fontsize=8)
+    ax.set_ylabel("Directional accuracy (%)")
+    ax.set_ylim(40, 88)
+    ax.set_title("The overfitting X-ray — gray = train, "
+                 "amber/blue = validation, number = gap", fontsize=10)
+    ax.legend(fontsize=8)
+    st.pyplot(fig)
     st.markdown(
-        "A preview of chapter 8, because it belongs to the story of the "
-        "algorithms: on the direction task the boosted trees reach "
-        f"**{d['train'].max():.0f}% on train** and collapse to "
-        f"~{d.loc[[i for i in d.index if i.startswith(('XGB', 'Light', 'Random'))], 'val'].mean():.0f}% "
-        "on validation — a ~25-point gap: they memorized the noise they "
-        "were built to chase. The recurrent nets show **train ≈ or even "
-        "below validation** (GRU weekly: 52.1 train vs 54.1 val) — "
-        "regularization worked; nothing was memorized. On a no-signal "
-        "task, the disciplined small model beats the powerful one."
+        ":material/visibility: **What you are looking at** — for each of "
+        "the ten direction models, its accuracy on the data it studied "
+        "(gray) next to its accuracy on unseen validation years "
+        "(colored); the small number is the gap between the two. "
+        ":material/lightbulb: **Why it matters** — the gap *is* "
+        "memorization made visible. Every tree model opens a 24–31 "
+        "point gap (LightGBM W: 79.4 on train, 47.4 on validation); "
+        "every recurrent net stays within ±4, and the champion GRU (W) "
+        "even scores *higher* on validation than on train. When the "
+        "task has almost no signal, capacity turns into a liability."
+    )
+
+    st.markdown(
+        "This chart belongs to the story of the algorithms as much as to "
+        "the results: boosting exists to chase every residual error, and "
+        "when the residuals are pure noise, chasing them *is* "
+        "memorization. The recurrent nets, kept small and drowned in "
+        "dropout, physically could not memorize — which on a no-signal "
+        "task turns out to be a superpower. Chapter 8 shows the same "
+        "discipline ranking repeating on the volatility tasks."
     )
 
 st.info(
