@@ -1,0 +1,161 @@
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+from app_core import (BASE_DIR_DAILY, BASE_DIR_WEEKLY, BASE_VOL_CLF,
+                      BASE_VOL_MAE, DARK_BG, TRAIN_END, VAL_END,
+                      load_features_frozen, next_chapter)
+
+st.markdown(
+    "Results are only as credible as the rules they were produced under. "
+    "Three rules govern everything in chapter 8: split by *time*, compare "
+    "against *honest baselines*, and select on validation while touching "
+    "the test set exactly once."
+)
+
+# ---------------- chronological split ----------------
+st.subheader("Rule 1 — split by time, never by shuffle")
+
+df = load_features_frozen()
+if df is not None:
+    tr = (df["date"] < TRAIN_END).sum()
+    va = ((df["date"] >= TRAIN_END) & (df["date"] < VAL_END)).sum()
+    te = (df["date"] >= VAL_END).sum()
+
+    fig = go.Figure()
+    for label, n, x0, color in [
+        (f"Train · {tr:,} rows", tr, 0, "#31589c"),
+        (f"Validation · {va:,} rows", va, tr, "#4f8df5"),
+        (f"Test · {te:,} rows", te, tr + va, "#ffb400"),
+    ]:
+        fig.add_trace(go.Bar(
+            x=[n], y=[""], orientation="h", name=label,
+            marker=dict(color=color), hovertemplate=label + "<extra></extra>",
+        ))
+    fig.update_layout(
+        barmode="stack", template="plotly_dark",
+        paper_bgcolor=DARK_BG, plot_bgcolor=DARK_BG,
+        height=140, margin=dict(l=10, r=10, t=30, b=10),
+        title="One timeline, three eras (each bar segment = rows)",
+        legend=dict(orientation="h"),
+        xaxis=dict(showticklabels=False), yaxis=dict(showticklabels=False),
+    )
+    st.plotly_chart(fig)
+
+    split_tbl = pd.DataFrame({
+        "Slice": ["Train", "Validation", "Test"],
+        "Period": [f"2010 → {TRAIN_END}", f"{TRAIN_END} → {VAL_END}",
+                   f"{VAL_END} → today"],
+        "Rows": [f"{tr:,}", f"{va:,}", f"{te:,}"],
+        "Role": [
+            "The model's textbook: the only data it may learn from.",
+            "Mock exams: used to pick winners and tune choices.",
+            "The real exam: opened once, at the very end, for the "
+            "final report.",
+        ],
+    })
+    st.dataframe(split_tbl, hide_index=True, width="stretch")
+    st.caption(
+        "Row counts are slices of the feature table; each model's "
+        "effective training set is slightly smaller after dropping "
+        "rows without a target and, for the recurrent nets, forming "
+        "10-day windows (direction models train on 2,858 rows)."
+    )
+
+st.markdown(
+    "The boundaries are **fixed calendar dates, not percentages**: "
+    "training ends before 2022, validation covers 2022–2024, test is "
+    "2025 onward. A random shuffle — standard in most ML tutorials — "
+    "would be a disaster here: rows from 2024 would sit in the training "
+    "set while rows from 2015 sit in the test set, letting the model "
+    "'remember the future'. Chronological splitting simulates the only "
+    "situation that matters: standing at a date and predicting forward."
+)
+
+# ---------------- baselines ----------------
+st.subheader("Rule 2 — an accuracy means nothing without its baseline")
+st.markdown(
+    "Every task is scored against the dumbest strategy that still gets "
+    "to play: **always predict the majority class** (or, for regression, "
+    "always predict the training mean). A model only earns credit for "
+    "the distance between itself and that free lunch."
+)
+b1, b2, b3, b4 = st.columns(4)
+b1.metric("Direction daily baseline", f"~{BASE_DIR_DAILY}%",
+          help="UP days slightly outnumber DOWN days in the validation "
+               "years, so 'always UP' scores above 50% for free.")
+b2.metric("Direction weekly baseline", f"~{BASE_DIR_WEEKLY}%",
+          help="Same idea on weekly horizon.")
+b3.metric("Vol classification baseline", f"{BASE_VOL_CLF}%",
+          help="The validation years split 43/57 between HIGH and LOW "
+               "vol days, so 'always LOW' already scores 57%. This is "
+               "why a 59.8% model has a ~3 pp edge, not a 9.8 pp edge.")
+b4.metric("Vol regression baseline", f"MAE {BASE_VOL_MAE}",
+          help="Always predicting the training-set mean volatility "
+               "gives MAE 0.082 on the scaled target. Models must "
+               "beat that.")
+st.markdown(
+    "This is the difference between a headline and a result: '59.8% "
+    "accuracy' sounds impressive until you know 57% costs nothing. All "
+    "edges reported in chapter 8 are measured **from the baseline, not "
+    "from 50%**."
+)
+
+# ---------------- selection protocol ----------------
+st.subheader("Rule 3 — select on validation, report test once")
+st.markdown(
+    "- All twenty models are trained on the train slice and compared on "
+    "**validation**. Champions are chosen there.\n"
+    "- The **test** column is computed once, at the end, and reported "
+    "as-is — including where it is ugly. It is never used to go back "
+    "and re-pick a model; that would quietly turn the final exam into "
+    "another mock exam.\n"
+    "- No p-hacking: we do not test twenty models and celebrate "
+    "whichever fluked highest. Planned significance testing (a "
+    "binomial test against the majority baseline) is restricted to the "
+    "three champions chosen on validation — and if p > 0.05, that gets "
+    "reported too."
+)
+
+# ---------------- metrics ----------------
+st.subheader("The measuring sticks")
+m1, m2 = st.columns(2)
+with m1:
+    with st.container(border=True):
+        st.markdown("**Accuracy** (classification)")
+        st.latex(r"\text{acc} = \frac{\#\,\text{correct}}{\#\,\text{days}}")
+        st.markdown(
+            "Share of days called correctly. Only meaningful relative "
+            "to the majority baseline above."
+        )
+    with st.container(border=True):
+        st.markdown("**MAE** — mean absolute error (regression)")
+        st.latex(r"\text{MAE} = \frac{1}{n}\sum_{t}\;|\hat y_t - y_t|")
+        st.markdown(
+            "Average size of the miss, in the target's own units. "
+            "Lower is better; robust to the fat-tailed outliers of "
+            "chapter 4."
+        )
+with m2:
+    with st.container(border=True):
+        st.markdown("**R²** — variance explained (regression)")
+        st.latex(r"R^2 = 1 - \frac{\sum_t (y_t - \hat y_t)^2}"
+                 r"{\sum_t (y_t - \bar y)^2}")
+        st.markdown(
+            "How much better than 'always predict the mean' the model "
+            "is. R² = 0 means no better; **any R² > 0 out of sample "
+            "is genuine signal** in a domain this noisy; negative "
+            "means worse than the naive guess."
+        )
+    with st.container(border=True):
+        st.markdown("**Probability, not certainty**")
+        st.markdown(
+            "Classifiers here output P(UP), not a verdict. P(UP) = "
+            "0.54 means 'slightly tilted up, mostly unsure' — an "
+            "honest statement in a near-random-walk market. The demo "
+            "page flags any prediction with |P − 0.5| < 0.05 as "
+            "low-conviction."
+        )
+
+next_chapter("app_pages/07_models.py",
+             "The models — five algorithms, four tasks, twenty runs")
