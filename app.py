@@ -41,11 +41,21 @@ pages = {
 
 page = st.navigation(pages, position="sidebar")
 
-st.title(page.title)
-st.caption("EUR/USD forecasting with ML and deep learning · "
-           "Dong Cong Gia Khang · Final Project 2026")
+from app_core import AUTHOR, COURSE, PROJECT_SUBTITLE, PROJECT_TITLE
+
+# Project identity banner — shown above every chapter so the topic is
+# never off-screen.
+st.markdown(
+    f"<div style='font-size:0.82rem; letter-spacing:0.14em; "
+    f"text-transform:uppercase; color:#ffb400; font-weight:700;'>"
+    f"{COURSE}</div>",
+    unsafe_allow_html=True,
+)
+st.markdown(f"### {PROJECT_TITLE}")
+st.caption(f":grey[{PROJECT_SUBTITLE}] &nbsp;·&nbsp; **{AUTHOR}**")
+st.markdown(f"## :orange[{page.title}]")
 
 page.run()
 
-st.sidebar.caption("Built on the principle: an ugly number that is true "
-                   "beats a beautiful number that is fake.")
+st.sidebar.caption(":grey[Built on the principle: an ugly number that is "
+                   "true beats a beautiful number that is fake.]")

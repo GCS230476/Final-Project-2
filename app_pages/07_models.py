@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from app_core import (C_DL, C_GRAY, C_ML, load_results, next_chapter)
+from app_core import (C_DL, C_GRAY, C_ML, GRAPH_STYLE, load_results,
+                      next_chapter)
 
 st.markdown(
     "Twenty models were trained: **4 tasks × 5 algorithms**. Two families "
@@ -65,26 +66,37 @@ st.markdown(
     "training years only** — fitting it on all data would leak future "
     "means and variances backward in time)."
 )
-st.code(
-    "# NB06/07/08 -- PyTorch, identical skeleton for LSTM and GRU\n"
-    "GRU(input_size=31, hidden_size=32, num_layers=1, batch_first=True)\n"
-    "head = Sequential(\n"
-    "    Dropout(0.3),          # randomly silence neurons -> no memorizing\n"
-    "    Linear(32, 16), ReLU(),\n"
-    "    Dropout(0.3),\n"
-    "    Linear(16, 1),         # one logit\n"
-    ")\n"
-    "loss = BCEWithLogitsLoss()  # classification tasks\n"
-    "# inference: sigmoid(logit) -> P(UP) or P(HIGH)\n"
-    "# vol regression: sigmoid -> [0,1] -> inverse min-max -> %/day",
-    language="python",
-)
+st.markdown("**The network structure, end to end**")
+st.graphviz_chart(f"""
+digraph {{
+    {GRAPH_STYLE}
+    rankdir=LR;
+    inp  [label="Input\\n10 days x 31 features", fillcolor="#31589c",
+          fontcolor="white"];
+    gru  [label="GRU layer\\n32 hidden units\\n(carries memory\\nacross the 10 days)",
+          fillcolor="#3a2f1b"];
+    d1   [label="Dropout 30%\\n(silence random\\nneurons)"];
+    lin1 [label="Linear\\n32 -> 16\\n+ ReLU"];
+    d2   [label="Dropout 30%"];
+    lin2 [label="Linear\\n16 -> 1\\n(one logit)"];
+    out  [label="sigmoid\\n-> P(UP) or\\nP(HIGH)", fillcolor="#213a26",
+          fontcolor="#9fe0af"];
+    inp -> gru -> d1 -> lin1 -> d2 -> lin2 -> out;
+}}
+""")
+s1, s2, s3 = st.columns(3)
+s1.markdown(":blue-badge[Size]&nbsp; ~7,000 parameters · 1 layer · hidden "
+            "size 32 — deliberately tiny.")
+s2.markdown(":orange-badge[Regularization]&nbsp; two 30% dropout layers "
+            "fight memorization.")
+s3.markdown(":green-badge[Output]&nbsp; a probability, not a verdict — "
+            "for regression, the sigmoid is inverse-scaled back to %/day.")
 st.markdown(
-    "Note how *small* this is: hidden size 32, one layer, ~7k "
-    "parameters. That is deliberate. Chapter 5 showed the signal is "
-    "faint; a large network pointed at faint signal does not find more "
-    "signal, it invents some from noise. Small capacity plus heavy "
-    "dropout is the architecture saying 'I expect to know little.'"
+    "Note how *small* this is. That is deliberate. Chapter 5 showed the "
+    "signal is faint; a large network pointed at faint signal does not "
+    "find more signal, it :red[**invents some from noise**]. Small "
+    "capacity plus heavy dropout is the architecture saying "
+    "':grey[I expect to know little.]'"
 )
 
 # ---------------- overfitting preview ----------------

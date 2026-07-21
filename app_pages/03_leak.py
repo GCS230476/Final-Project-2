@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from app_core import FIG_EDA, LIT_CEILING, fig_card, load_master, next_chapter
+from app_core import (FIG_EDA, GRAPH_STYLE, LIT_CEILING, fig_card,
+                      load_master, next_chapter)
 
 st.markdown(
     "This is the most important chapter of the project. The first direction "
@@ -130,20 +131,51 @@ st.markdown(
 )
 
 # ---------------- fix ----------------
-st.subheader("The fix: three lines, applied at the source")
-st.code(
-    '# src/data/build_dataset.py :: load_yfinance()\n'
-    'if asset == "eurusd":\n'
-    '    df[asset] = df[asset].shift(-1)   # re-label bars to their true date\n'
-    '    df = df.dropna(subset=[asset]).reset_index(drop=True)',
-    language="python",
+st.subheader("The fix: re-label every bar to its true date")
+st.markdown(
+    "The repair is conceptually a single move — **shift the Yahoo EUR/USD "
+    "column up by one row** so each price sits on the day whose move it "
+    "actually contains. The diagram below shows the misalignment before, "
+    "and the corrected calendar after:"
+)
+st.graphviz_chart(f"""
+digraph {{
+    {GRAPH_STYLE}
+    rankdir=TB;
+    subgraph cluster_0 {{
+        label="BEFORE — misaligned"; color="#f85149"; fontcolor="#f85149";
+        b_lbl [label="row date:  Mon | Tue | Wed", fillcolor="#2a2130"];
+        b_yf  [label="Yahoo bar: Fri | Mon | Tue", fillcolor="#3a2130",
+               fontcolor="#f8a0a0"];
+        b_dxy [label="DXY bar:   Mon | Tue | Wed", fillcolor="#232a3a"];
+        b_lbl -> b_yf [style=invis]; b_yf -> b_dxy [style=invis];
+    }}
+    subgraph cluster_1 {{
+        label="AFTER — shift(-1) applied"; color="#2ea043";
+        fontcolor="#2ea043";
+        a_lbl [label="row date:  Mon | Tue | Wed", fillcolor="#212a24"];
+        a_yf  [label="Yahoo bar: Mon | Tue | Wed", fillcolor="#213a26",
+               fontcolor="#9fe0af"];
+        a_dxy [label="DXY bar:   Mon | Tue | Wed", fillcolor="#232a3a"];
+        a_lbl -> a_yf [style=invis]; a_yf -> a_dxy [style=invis];
+    }}
+}}
+""")
+c_fix1, c_fix2 = st.columns(2)
+c_fix1.markdown(
+    ":red-badge[:material/warning: Before]&nbsp; The Yahoo bar on each row "
+    "is a day behind DXY, so 'tomorrow's target' lines up with "
+    "**today's** DXY — the leak."
+)
+c_fix2.markdown(
+    ":green-badge[:material/check: After]&nbsp; Every source now agrees on "
+    "the calendar. The last row loses its value (no next bar yet) and is "
+    "dropped."
 )
 st.markdown(
-    "`shift(-1)` pulls the next row's value onto the current row — every "
-    "bar now sits on the date whose move it really contains. The last row "
-    "loses its value (there is no next bar yet) and is dropped. The fix "
-    "lives inside `build_master_dataset()`, so **every** future data pull "
-    "inherits it automatically."
+    "The correction lives inside `build_master_dataset()`, so **every** "
+    "future data pull inherits it automatically — the bug can never "
+    "silently return."
 )
 
 st.subheader("After the fix — verified live on today's dataset")

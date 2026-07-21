@@ -6,12 +6,45 @@ import streamlit as st
 from app_core import (DARK_BG, LIT_CEILING, RENAISSANCE, load_master,
                       next_chapter)
 
+# ---------------- abstract / introduction ----------------
 st.markdown(
-    "Every forecasting project starts with a naive question: "
-    "**looking at all the data available today, what can a machine say about "
-    "EUR/USD tomorrow?** This page shows why the naive version of that "
-    "question is unanswerable, and how it was reshaped into three questions "
-    "that can be answered honestly."
+    "> This project asks whether machine learning can forecast the "
+    "**EUR/USD** exchange rate, and answers it honestly. Using **22 "
+    "financial and economic series** turned into **31 engineered "
+    "features**, it trains **20 models** (5 algorithms × 4 tasks) to "
+    "predict two different things about tomorrow: the **direction** of the "
+    "move and its **volatility**. The headline finding is a deliberate "
+    "contrast — :red[**direction is essentially unpredictable**] "
+    "(~50–54%, at the coin-flip wall the Efficient Market Hypothesis "
+    "predicts), while :green[**volatility is genuinely forecastable**] "
+    "(beats every naive baseline). Along the way, the project uncovered "
+    "and fixed a **data-leak bug** that had faked 86% accuracy — that "
+    "investigation, in chapter 3, is the core research contribution."
+)
+
+with st.container(border=True):
+    a, b, c, d = st.columns(4)
+    a.metric("Data series", "22", help="From Yahoo Finance, FRED, ECB, "
+             "CFTC — four independent sources.")
+    b.metric("Engineered features", "31", help="In 6 groups, chapter 5.")
+    c.metric("Models trained", "20", help="RF, XGBoost, LightGBM, LSTM, "
+             "GRU × 4 tasks.")
+    d.metric("Years of data", "16", help="2010 to today, ~4,150 "
+             "trading days.")
+
+st.markdown(
+    "**How to read this dashboard** — the sidebar is a table of contents. "
+    "The nine chapters run in the order the work actually happened: the "
+    "question, the data, the leak investigation, exploration, feature "
+    "engineering, methodology, the models, the results, and a live demo. "
+    "Every chart carries a :blue-badge[what you see] and a "
+    ":green-badge[why it matters] note. Read straight through, or jump."
+)
+
+st.markdown(
+    "This first chapter shows why the *naive* question — 'what will "
+    "EUR/USD be tomorrow?' — is unanswerable, and how it was reshaped "
+    "into three questions that **can** be answered."
 )
 
 # ---------------- market snapshot ----------------

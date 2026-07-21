@@ -42,6 +42,21 @@ plt.rcParams.update({
     "legend.edgecolor": "#3d4656",
 })
 
+# ---------- project identity ----------
+# NOTE for Khang: replace with the exact title you register with cô.
+PROJECT_TITLE = ("Forecasting EUR/USD: what a machine can — and cannot — "
+                 "say about tomorrow")
+PROJECT_SUBTITLE = ("A comparative study of machine learning and deep "
+                    "learning for exchange-rate direction and volatility, "
+                    "under the Efficient Market Hypothesis")
+AUTHOR = "Dong Cong Gia Khang"
+COURSE = "Final Project · FPT Greenwich · 2026"
+
+# ---------- result highlight colors (for pandas Styler) ----------
+GREEN_BG = "background-color: rgba(46, 160, 67, 0.28)"    # beats baseline
+RED_BG = "background-color: rgba(248, 81, 73, 0.24)"       # below baseline
+AMBER_BG = "background-color: rgba(255, 180, 0, 0.22); font-weight: 700"
+
 # ---------- key frozen numbers (from models/*.json and notebooks) ----------
 VOL_VMAX = 0.03175612356587054      # min-max scale of the volatility target
 VOL_MEDIAN_SCALED = 0.10140372247974766  # HIGH/LOW threshold (train median)
@@ -94,19 +109,41 @@ def fig_card(path: Path, what: str, why: str, title: str | None = None):
     """A figure with its explanation: what the chart shows, why it matters."""
     with st.container(border=True):
         if title:
-            st.markdown(f"**{title}**")
+            st.markdown(f"#### :orange[{title}]")
         if path.exists():
             st.image(str(path), width="stretch")
         else:
             st.error(f"Figure not found: {path.name}")
-        st.markdown(f":material/visibility: **What you are looking at** — {what}")
-        st.markdown(f":material/lightbulb: **Why it matters** — {why}")
+        st.markdown(f":blue-badge[:material/visibility: What you are "
+                    f"looking at]&nbsp; {what}")
+        st.markdown(f":green-badge[:material/lightbulb: Why it matters]"
+                    f"&nbsp; {why}")
 
 
 def next_chapter(page_path: str, label: str):
     st.markdown("")
     st.page_link(page_path, label=f"Next: {label}",
                  icon=":material/arrow_forward:")
+
+
+def verdict(ok: bool, win_text: str, lose_text: str) -> str:
+    """Return a colored badge string for a good/bad outcome."""
+    if ok:
+        return f":green-badge[:material/check_circle: {win_text}]"
+    return f":red-badge[:material/cancel: {lose_text}]"
+
+
+def hl_vs_baseline(col, baseline, higher_is_better=True):
+    """Styler helper: green if the value beats the baseline, red if not."""
+    out = []
+    for v in col:
+        try:
+            better = (v >= baseline) if higher_is_better else (v <= baseline)
+        except TypeError:
+            out.append("")
+            continue
+        out.append(GREEN_BG if better else RED_BG)
+    return out
 
 
 GRAPH_STYLE = """

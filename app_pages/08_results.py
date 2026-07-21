@@ -2,15 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
-from app_core import (BASE_DIR_DAILY, BASE_DIR_WEEKLY, BASE_VOL_CLF,
-                      BASE_VOL_MAE, C_BASE, C_DL, C_DL2, C_GRAY, C_ML,
-                      C_ML2, FIG_MODELS, LIT_CEILING, VOL_VMAX, fig_card,
-                      load_results, next_chapter)
+from app_core import (AMBER_BG, BASE_DIR_DAILY, BASE_DIR_WEEKLY,
+                      BASE_VOL_CLF, BASE_VOL_MAE, C_BASE, C_DL, C_DL2,
+                      C_GRAY, C_ML, C_ML2, FIG_MODELS, GREEN_BG, LIT_CEILING,
+                      RED_BG, VOL_VMAX, fig_card, hl_vs_baseline,
+                      load_results, next_chapter, verdict)
 
 st.markdown(
     "Twenty models, three problems, one prediction made back in chapter 4: "
     "direction should fail, volatility should work. Here is what happened — "
-    "every number explained, including the ugly ones."
+    "every number explained, including the ugly ones. In every table below, "
+    ":green-badge[green] beats its baseline, :red-badge[red] does not, and "
+    ":orange-badge[amber] marks the champion chosen on validation."
 )
 
 res = load_results()
@@ -19,19 +22,36 @@ res = load_results()
 # DIRECTION
 # ============================================================
 st.header("Problem 1 — Direction: the expected failure")
+st.markdown(verdict(False, "", "Outcome: fails as predicted — no model "
+                    "clears its baseline by a meaningful margin"))
 
 if "direction" in res:
     df = res["direction"].copy()
-    st.dataframe(
-        df.style.format("{:.2f}").highlight_max(subset=["val"],
-                                                color="#2e5233"),
-        width="stretch",
-    )
+    base = [BASE_DIR_WEEKLY if m.strip().endswith("(W)") else BASE_DIR_DAILY
+            for m in df.index]
+    show = df.copy()
+    show.insert(0, "baseline", base)
+    show["edge vs base"] = show["val"] - show["baseline"]
+    champ = show["edge vs base"].idxmax()
+
+    def _mark_champ(row):
+        return [AMBER_BG if row.name == champ else "" for _ in row]
+
+    styled = (show.style.format("{:+.2f}", subset=["edge vs base"])
+              .format("{:.2f}", subset=["baseline", "train", "val", "test"])
+              .apply(lambda c: hl_vs_baseline(show["edge vs base"], 0.0),
+                     subset=["edge vs base"])
+              .apply(lambda c: [GREEN_BG if e > 0 else RED_BG
+                                for e in show["edge vs base"]], subset=["val"])
+              .apply(_mark_champ, axis=1, subset=["train", "val", "test"]))
+    st.dataframe(styled, width="stretch")
     st.markdown(
         "**How to read this table** — rows are the ten direction models "
-        "(D = daily horizon, W = weekly); columns are accuracy (%) on "
-        "each era of the timeline. Models are ranked and chosen by the "
-        "**val** column only; green marks the champion."
+        "(D = daily horizon, W = weekly). *baseline* is the majority-class "
+        "score to beat; *edge vs base* = val − baseline is the only number "
+        "that counts. Green = beat baseline, red = did not, amber row = "
+        "the champion. Notice how many rows are **red**: even 'good' "
+        "training scores collapse below baseline on unseen data."
     )
 
     fig, ax = plt.subplots(figsize=(10, 4.5))
@@ -80,17 +100,27 @@ if "direction" in res:
 # VOL REGRESSION
 # ============================================================
 st.header("Problem 2 — Volatility regression: the quiet success")
+st.markdown(verdict(True, "Outcome: works — all five models beat the "
+                    "naive baseline on MAE", ""))
 
 if "vol_reg" in res:
     df = res["vol_reg"].copy()
-    st.dataframe(df.style.format("{:.4f}"), width="stretch")
+    styled = (df.style.format("{:.4f}")
+              .apply(lambda c: hl_vs_baseline(df["val_mae"], BASE_VOL_MAE,
+                                              higher_is_better=False),
+                     subset=["val_mae"])
+              .apply(lambda c: hl_vs_baseline(df["val_r2"], 0.0),
+                     subset=["val_r2"]))
+    st.dataframe(styled, width="stretch")
     st.markdown(
         "**How to read this table** — the target is tomorrow's "
         "|return|, min-max scaled to [0, 1] (1.0 corresponds to "
         f"{VOL_VMAX:.4f} ≈ a 3.2% day, the wildest in training "
-        "history). MAE = average miss on that scale, lower is better; "
-        "R² = share of variance explained, positive means better than "
-        "always guessing the mean."
+        "history). *val_mae* = average miss, lower is better — "
+        f":green[green beats the baseline {BASE_VOL_MAE}]. *val_r2* = "
+        "variance explained — :green[green is above zero (real signal)], "
+        ":red[red is below]. Every val MAE cell is green; that is the "
+        "success that never happened for direction."
     )
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
@@ -154,15 +184,30 @@ if "vol_reg" in res:
 # VOL CLASSIFICATION
 # ============================================================
 st.header("Problem 3 — Volatility classification: the confirmation")
+st.markdown(verdict(True, "Outcome: works — all five models beat baseline "
+                    "by ~2.6–2.9 points, and it holds on test", ""))
 
 if "vol_clf" in res:
     df = res["vol_clf"].copy()
-    st.dataframe(df.style.format("{:.2f}"), width="stretch")
+    champ = df["val"].idxmax()
+
+    def _mark_champ_clf(row):
+        return [AMBER_BG if row.name == champ else "" for _ in row]
+
+    styled = (df.style.format("{:.2f}")
+              .apply(lambda c: hl_vs_baseline(df["val"], BASE_VOL_CLF),
+                     subset=["val"])
+              .apply(lambda c: hl_vs_baseline(df["val_vs_base"], 0.0),
+                     subset=["val_vs_base"])
+              .apply(_mark_champ_clf, axis=1, subset=["train", "test"]))
+    st.dataframe(styled, width="stretch")
     st.markdown(
         "**How to read this table** — will tomorrow's |return| land "
         "above or below the training-years median (HIGH or LOW vol)? "
-        "The `val_vs_base` column is the honest metric: accuracy minus "
-        f"the {BASE_VOL_CLF}% majority baseline."
+        "*val_vs_base* is the honest metric: accuracy minus the "
+        f"{BASE_VOL_CLF}% majority baseline. :green[Every val cell is "
+        "green] (beats baseline), amber marks the champion — the opposite "
+        "picture to the red-filled direction table."
     )
 
     fig, ax = plt.subplots(figsize=(9, 4))
@@ -205,13 +250,26 @@ if "vol_clf" in res:
 # ============================================================
 st.header("The verdict")
 v1, v2, v3 = st.columns(3)
-v1.metric("Direction (control group)", "≈ baseline",
-          "+2.3 pp at best", delta_color="off",
-          help="Exactly the controlled failure EMH predicts.")
-v2.metric("Vol regression", "R² > 0 on val", "MAE −10~13% vs naive",
-          help="Modest, real, honestly fragile out of regime.")
-v3.metric("Vol classification", "~59.9%", f"+2.9 pp vs {BASE_VOL_CLF}%",
-          help="Consistent across all five algorithms; survives test.")
+with v1:
+    with st.container(border=True):
+        st.markdown(":red-badge[:material/cancel: FAILS] &nbsp; "
+                    "**Direction**")
+        st.metric("Best edge vs baseline", "+2.3 pp", "≈ coin flip",
+                  delta_color="off")
+        st.caption("The control group. Exactly the controlled failure "
+                   "EMH predicts.")
+with v2:
+    with st.container(border=True):
+        st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
+                    "**Vol regression**")
+        st.metric("MAE vs naive baseline", "−10 to −13%", "R² > 0 on val")
+        st.caption("Modest, real, honestly fragile out of regime.")
+with v3:
+    with st.container(border=True):
+        st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
+                    "**Vol classification**")
+        st.metric("Accuracy vs baseline", f"+2.9 pp", "survives test")
+        st.caption("Consistent across all five algorithms.")
 
 st.info(
     "**The thesis, confirmed by the experiment** — same 31 features, "

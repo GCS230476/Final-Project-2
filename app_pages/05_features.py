@@ -16,51 +16,53 @@ st.markdown(
 st.subheader("The 31 features, group by group")
 
 groups = [
-    ("G1 · Log returns (4)",
-     "eurusd_return, dxy_return, gold_return, oil_return",
-     "np.log(p / p.shift(1))",
+    ("G1 · Log returns (4)", ":blue-badge[4 features]",
+     "eurusd, dxy, gold, oil returns",
+     "the natural log of today's price divided by yesterday's",
      "Today's move in the four core markets. The stationary heartbeat of "
      "the dataset — and the raw material for most other groups."),
-    ("G2 · First differences (7)",
-     "vixcls_diff, dgs2_diff, dgs10_diff, ecbdfr_diff, t10yie_diff, "
-     "eur_effective_rate_diff, dtwexbgs_diff",
-     "x - x.shift(1)",
+    ("G2 · First differences (7)", ":blue-badge[7 features]",
+     "vixcls, dgs2, dgs10, ecbdfr, t10yie, eur effective rate, dtwexbgs "
+     "(each _diff)",
+     "today's value minus yesterday's value",
      "Rates and indexes drift like prices, so we feed their daily *change*. "
-     "A rate hike shows up as a spike in the diff, which is the actual "
-     "news event."),
-    ("G3 · Raw levels (2)",
-     "vixcls_level, eur_net_position_pct",
-     "unchanged",
+     "A rate hike shows up as a spike in the difference, which is the "
+     "actual news event."),
+    ("G3 · Raw levels (2)", ":blue-badge[2 features]",
+     "vixcls level, eur net position %",
+     "used as-is, no transform",
      "Two exceptions where the level itself is meaningful and roughly "
      "bounded: VIX at 30 means fear regardless of yesterday, and COT "
      "positioning is already expressed as a percentage."),
-    ("G4 · Lags (7)",
-     "eurusd_return lag1/2/3 · dxy_return lag1/2 · vixcls_diff_lag1 · "
-     "gold_return_lag1",
-     "x.shift(k)",
+    ("G4 · Lags (7)", ":blue-badge[7 features]",
+     "eurusd return (1, 2, 3 days ago) · dxy return (1, 2) · vix diff "
+     "(1) · gold return (1)",
+     "the same value from k days earlier",
      "Explicit short-term memory for models that see one row at a time "
-     "(the tree models). The RNNs get memory from their 10-day window "
-     "instead; the trees get it from these columns."),
-    ("G5 · Rolling stats (7)",
-     "eurusd_return ma5/ma10/ma20 · vol5/vol10/vol20 · dxy_return_vol10",
-     "rolling mean / rolling std",
-     "The ma* columns summarize recent trend; the vol* columns are "
-     "*realized volatility* — the stars of the show. vol20 is literally "
-     "'how stormy were the last 20 days', the direct carrier of the "
-     "clustering signal from chapter 4."),
-    ("G6 · Engineered (4)",
-     "us_eu_rate_spread · us_eu_inflation_diff · vix_regime · day_of_week",
-     "dgs2 - ecbdfr · cpiaucsl - cp0000... · vix > 20 · calendar",
+     "(the tree models). The recurrent nets get memory from their 10-day "
+     "window instead; the trees get it from these columns."),
+    ("G5 · Rolling stats (7)", ":blue-badge[7 features]",
+     "eurusd return moving-averages (5, 10, 20 days) · volatilities "
+     "(5, 10, 20) · dxy return volatility (10)",
+     "average, or standard deviation, over the last N days",
+     "The moving-average columns summarize recent trend; the volatility "
+     "columns are *realized volatility* — the stars of the show. The "
+     "20-day volatility is literally 'how stormy were the last 20 days', "
+     "the direct carrier of the clustering signal from chapter 4."),
+    ("G6 · Engineered (4)", ":blue-badge[4 features]",
+     "US–EU rate spread · US–EU inflation gap · VIX regime · day of week",
+     "domain knowledge: US rate minus EU rate; US inflation minus EU "
+     "inflation; is VIX above 20; which weekday",
      "Domain knowledge compressed into single columns: the rate spread "
      "*is* the carry-trade channel, the inflation gap *is* the "
-     "purchasing-power channel, vix_regime flags calm vs stressed "
-     "markets, day_of_week lets models notice weekday effects."),
+     "purchasing-power channel, the VIX regime flags calm vs stressed "
+     "markets, and the weekday lets models notice calendar effects."),
 ]
-for name, cols, formula, why in groups:
+for name, badge, cols, formula, why in groups:
     with st.expander(name, icon=":material/category:"):
-        st.markdown(f"**Columns:** `{cols}`")
-        st.markdown(f"**Formula:** `{formula}`")
-        st.markdown(f"**Why it exists:** {why}")
+        st.markdown(f"{badge} &nbsp; **What it is:** {cols}")
+        st.markdown(f":orange-badge[how it is built] &nbsp; {formula}")
+        st.markdown(f":green-badge[why it exists] &nbsp; {why}")
 
 df_feat = load_features_frozen()
 if df_feat is not None:
@@ -68,10 +70,9 @@ if df_feat is not None:
                   if c not in ("date", "target_return_next_day",
                                "target_direction")])
     st.caption(
-        f"Sanity check straight from data/processed/fx_features.csv: "
+        f"Sanity check straight from the frozen feature file: "
         f"**{n_feat} feature columns**, {len(df_feat):,} rows, plus the "
-        f"two targets (target_return_next_day = eurusd_return.shift(-1), "
-        f"target_direction = its sign)."
+        f"two targets (tomorrow's return, and its sign for direction)."
     )
 
 st.warning(
