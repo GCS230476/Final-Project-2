@@ -134,7 +134,7 @@ def load_model(task: str, name: str):
 
 
 # ----------------------------------------------------------------- predict
-def predict_latest(task: str, name: str, df: pd.DataFrame | None = None) -> dict:
+def predict_latest(task, name, df=None):
     """
     Predict from the most recent rows of fx_features.csv.
     Returns a dict ready to display in Streamlit.

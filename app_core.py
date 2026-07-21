@@ -105,7 +105,7 @@ def load_results():
 
 
 # ---------- UI helpers ----------
-def fig_card(path: Path, what: str, why: str, title: str | None = None):
+def fig_card(path, what, why, title=None):
     """A figure with its explanation: what the chart shows, why it matters."""
     with st.container(border=True):
         if title:

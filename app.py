@@ -8,6 +8,8 @@ methodology -> models -> results -> live demo.
 """
 import streamlit as st
 
+from app_core import AUTHOR, COURSE, PROJECT_SUBTITLE, PROJECT_TITLE
+
 st.set_page_config(
     page_title="EUR/USD Forecasting",
     page_icon=":material/monitoring:",
@@ -40,8 +42,6 @@ pages = {
 }
 
 page = st.navigation(pages, position="sidebar")
-
-from app_core import AUTHOR, COURSE, PROJECT_SUBTITLE, PROJECT_TITLE
 
 # Project identity banner — shown above every chapter so the topic is
 # never off-screen.
