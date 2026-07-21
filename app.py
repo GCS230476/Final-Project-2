@@ -45,14 +45,9 @@ page = st.navigation(pages, position="sidebar")
 
 # Project identity banner — shown above every chapter so the topic is
 # never off-screen.
-st.markdown(
-    f"<div style='font-size:0.82rem; letter-spacing:0.14em; "
-    f"text-transform:uppercase; color:#ffb400; font-weight:700;'>"
-    f"{COURSE}</div>",
-    unsafe_allow_html=True,
-)
+st.markdown(f":orange-badge[:material/school: {COURSE}]")
 st.markdown(f"### {PROJECT_TITLE}")
-st.caption(f":grey[{PROJECT_SUBTITLE}] &nbsp;·&nbsp; **{AUTHOR}**")
+st.caption(f"{PROJECT_SUBTITLE} &nbsp;·&nbsp; **{AUTHOR}**")
 st.markdown(f"## :orange[{page.title}]")
 
 page.run()

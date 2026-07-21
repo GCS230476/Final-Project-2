@@ -1,6 +1,75 @@
+# EUR/USD Forecasting dashboard -- dark "trading terminal" theme.
+# Amber accent on deep slate, Inter for text, JetBrains Mono for code.
+
 [theme]
 base = "dark"
-primaryColor = "#ffb400"
-backgroundColor = "#0e1117"
-secondaryBackgroundColor = "#161b26"
-textColor = "#e6e9ef"
+primaryColor = "#F59E0B"              # amber, dark enough for white button text
+backgroundColor = "#0E1117"           # deep background
+secondaryBackgroundColor = "#161B26"  # cards, widgets, chart facecolor
+codeBackgroundColor = "#161B26"
+textColor = "#E6E9EF"
+codeTextColor = "#CBD5E1"
+linkColor = "#F5B54B"
+borderColor = "#2A3140"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "8px"
+buttonRadius = "8px"
+
+# Typography
+font = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+baseFontSize = 15
+baseFontWeight = 400
+codeFontSize = "13px"
+headingFontSizes = ["30px", "24px", "19px", "16px", "14px", "13px"]
+headingFontWeights = [700, 700, 600, 600, 500, 500]
+linkUnderline = false
+
+# Semantic colors -- these drive the badges and coloured text used to mark
+# good results, bad results, explanations and caveats.
+greenColor = "#34D399"
+redColor = "#F87171"
+orangeColor = "#FBBF24"
+yellowColor = "#FBBF24"
+blueColor = "#60A5FA"
+violetColor = "#A78BFA"
+grayColor = "#94A3B8"
+
+# Charts: amber = deep learning, blue = machine learning (matches the
+# matplotlib figures built in app_core.py)
+chartCategoricalColors = [
+    "#FFB400",
+    "#4F8DF5",
+    "#34D399",
+    "#F87171",
+    "#A78BFA",
+    "#38BDF8",
+    "#94A3B8",
+    "#FB923C",
+]
+chartSequentialColors = [
+    "#2A1E05",
+    "#4A3608",
+    "#6B4E0B",
+    "#8C670E",
+    "#AD8011",
+    "#CE9914",
+    "#EFB217",
+    "#F5C64F",
+    "#FADB87",
+    "#FFF0BF",
+]
+
+# Result tables
+dataframeBorderColor = "#2A3140"
+dataframeHeaderBackgroundColor = "#1B2130"
+
+[theme.sidebar]
+backgroundColor = "#0B0E14"
+secondaryBackgroundColor = "#161B26"
+codeBackgroundColor = "#161B26"
+textColor = "#E6E9EF"
+borderColor = "#2A3140"
+primaryColor = "#F59E0B"
