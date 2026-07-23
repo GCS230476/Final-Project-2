@@ -59,12 +59,10 @@ plt.rcParams.update({
 })
 
 # ---------- project identity ----------
-# NOTE for Khang: replace with the exact title you register with cô.
-PROJECT_TITLE = ("Forecasting EUR/USD: what a machine can — and cannot — "
-                 "say about tomorrow")
-PROJECT_SUBTITLE = ("A comparative study of machine learning and deep "
-                    "learning for exchange-rate direction and volatility, "
-                    "under the Efficient Market Hypothesis")
+PROJECT_TITLE = "Forecasting Foreign Exchange Rates Using Machine Learning Techniques"
+PROJECT_SUBTITLE = ("A EUR/USD case study — direction and volatility with "
+                    "machine learning and deep learning, under the "
+                    "Efficient Market Hypothesis")
 AUTHOR = "Dong Cong Gia Khang"
 COURSE = "Final Project · FPT Greenwich · 2026"
 
