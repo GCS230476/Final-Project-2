@@ -18,6 +18,10 @@ st.subheader("Rule 1 — split by time, never by shuffle")
 
 df = load_features_frozen()
 if df is not None:
+    # The training notebook rebuilds the target from the raw price, so the
+    # final row -- which has no next-day price inside the snapshot -- is not
+    # part of any split. Dropping it makes these counts match exactly.
+    df = df.iloc[:-1]
     tr = (df["date"] < TRAIN_END).sum()
     va = ((df["date"] >= TRAIN_END) & (df["date"] < VAL_END)).sum()
     te = (df["date"] >= VAL_END).sum()
@@ -44,7 +48,7 @@ if df is not None:
 
     split_tbl = pd.DataFrame({
         "Slice": ["Train", "Validation", "Test"],
-        "Share": ["70%", "18%", "12%"],
+        "Share": ["70%", "20%", "10%"],
         "Period": [f"2010-02-02 → {TRAIN_END}", f"{TRAIN_END} → {VAL_END}",
                    f"{VAL_END} → end of snapshot"],
         "Rows": [f"{tr:,}", f"{va:,}", f"{te:,}"],
@@ -65,8 +69,8 @@ if df is not None:
 
 st.markdown(
     "The split is **strictly chronological**: the earliest 70% of trading "
-    "days are used for training, the next 18% for validation, the final "
-    "12% for test. Because the data is sorted by date, those shares land "
+    "days are used for training, the next 20% for validation, the final "
+    "10% for test. Because the data is sorted by date, those shares land "
     "on the calendar boundaries shown above — no row from a later date "
     "ever appears in an earlier slice.\n\n"
     "A random shuffle — standard in most ML tutorials — would be a "

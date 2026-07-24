@@ -52,12 +52,12 @@ WINDOW = DIR_META["window"]                      # 10
 #
 # Coefficients below are least-squares fits of actual ~ a * prediction + b
 # computed on the TRAINING split only (no validation or test data used).
-# Applying them turns validation R2 from -0.007 to +0.048 (LSTM) and from
-# -0.054 to +0.022 (GRU).  Tree models are already well calibrated and are
-# left untouched.
+# Applying them turns validation R2 from -0.006 to +0.051 (LSTM) and from
+# -0.046 to +0.027 (GRU).  Tree models are already well calibrated and are
+# left untouched.  Regenerate with verify_vol_regression.py.
 VOL_DL_CALIBRATION = {
-    "vol_reg_lstm.pt": (0.9896, 0.0139),
-    "vol_reg_gru.pt":  (0.8587, 0.0287),
+    "vol_reg_lstm.pt": (0.9884, 0.0141),
+    "vol_reg_gru.pt":  (0.8580, 0.0288),
 }
 
 

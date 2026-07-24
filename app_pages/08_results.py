@@ -105,10 +105,10 @@ st.markdown(verdict(False, "", "Outcome: fails — the apparent MAE win came "
                     "from the wrong baseline, and R² does not hold up"))
 st.warning(
     "**This section was rewritten after a supervisor spotted that the "
-    "predicted-vs-actual scatter was flat.** Investigating that one "
-    "observation turned up three problems in what had been reported as a "
-    "success. Everything below is the corrected version, reproducible by "
-    "running `verify_vol_regression.py`.",
+    "predicted-vs-actual scatter was flat.** The published metrics turned "
+    "out to be arithmetically correct — `verify_vol_regression.py` "
+    "reproduces every one of them exactly from the frozen snapshot — but "
+    "the *conclusion* drawn from them did not survive scrutiny.",
     icon=":material/policy:",
 )
 
@@ -145,9 +145,9 @@ st.markdown(
     "original baseline predicted the **mean**, which is the wrong "
     "reference for MAE.\n\n"
     "A constant predictor with **zero skill**, parked on the training "
-    "median, scores MAE **0.0770**. The models score 0.0753–0.0765. So "
-    "against the correct baseline the gain shrinks from a headline "
-    ":red[**~9–12%**] to :red[**+0.7% to +2.2%**] — essentially nothing. "
+    "median, scores MAE **0.0747**. The tree models score 0.0734–0.0744. "
+    "So against the correct baseline the gain shrinks from a headline "
+    ":red[**~10%**] to :red[**+0.4% to +1.8%**] — essentially nothing. "
     "The models had mostly discovered that *guessing low* pays on a "
     "skewed target, which is a property of the distribution, not "
     "forecasting skill."
@@ -155,14 +155,14 @@ st.markdown(
 
 st.subheader("Problem 2 — the recurrent nets were mis-calibrated")
 st.markdown(
-    "Their sigmoid output averaged **0.088** against a true mean of "
-    "**0.118** — a systematic under-forecast of about 25%, which drove "
-    "their R² negative (LSTM :red[−0.007], GRU :red[−0.054]) even though "
-    "LSTM's correlation with reality (**0.274**) is the best of any "
+    "Their sigmoid output averages about **0.088** against a true mean of "
+    "**0.118** — a systematic under-forecast of roughly 25%, which drove "
+    "their R² negative (LSTM :red[−0.006], GRU :red[−0.046]) even though "
+    "LSTM's correlation with reality (**0.276**) is the best of any "
     "model. The scale was right; only the offset was wrong.\n\n"
     "A linear correction fitted **on the training split only** repairs "
-    "it: LSTM's validation R² moves :red[−0.007] → :green[**+0.049**], "
-    "GRU's :red[−0.054] → :green[**+0.022**]. The fix is now applied in "
+    "it: LSTM's validation R² moves :red[−0.006] → :green[**+0.051**], "
+    "GRU's :red[−0.046] → :green[**+0.027**]. The fix is now applied in "
     "the live demo, where all five models finally agree on the same "
     "forecast range instead of the two nets sitting 25% low."
 )
@@ -170,18 +170,18 @@ st.markdown(
 st.subheader("Problem 3 — the surviving R² is fragile and does not generalise")
 if "vol_reg_verified" in res:
     rb1, rb2, rb3 = st.columns(3)
-    rb1.metric("Validation R² (XGBoost)", "+0.075",
-               help="Positive, and statistically real: correlation 0.28 "
+    rb1.metric("Validation R² (XGBoost)", "+0.074",
+               help="Positive, and statistically real: correlation 0.27 "
                     "with p < 1e-11.")
-    rb2.metric("…dropping the 5% wildest days", "+0.018", "−76%",
+    rb2.metric("…dropping the 5% wildest days", "+0.005", "−93%",
                delta_color="inverse",
-               help="Most of the R² is earned on a handful of extreme "
-                    "days, not on everyday forecasting.")
-    rb3.metric("Test R² (2024-05 onward)", "−0.002",
+               help="Almost all of the R² is earned on a handful of "
+                    "extreme days, not on everyday forecasting.")
+    rb3.metric("Test R² (2024-09 onward)", "−0.003",
                help="The edge does not survive into the held-out period.")
 st.markdown(
     "Split the validation window into thirds and the R² reads "
-    "**+0.054 / −0.013 / +0.031** — one sub-period is outright negative. "
+    "**+0.046 / +0.038 / −0.010** — the last sub-period is negative. "
     "Together with the scatter, this says what kind of skill is left: the "
     "model tracks the **slow drift of the volatility regime** (which "
     "months are calmer) but has essentially no **day-to-day** skill. "
@@ -299,7 +299,7 @@ with v2:
     with st.container(border=True):
         st.markdown(":red-badge[:material/cancel: FAILS] &nbsp; "
                     "**Vol regression**")
-        st.metric("MAE vs correct baseline", "+0.7 to +2.2%",
+        st.metric("MAE vs correct baseline", "+0.4 to +1.8%",
                   "R² gone on test", delta_color="off")
         st.caption("Magnitude is not predictable; found by audit.")
 with v3:
@@ -318,10 +318,11 @@ st.info(
     "five algorithms and it holds on the test set — which is exactly "
     "what volatility clustering predicts and what market efficiency "
     "cannot erase.\n\n"
-    "Two results in this project were killed by their own author: a fake "
-    "86% caused by a data leak, and a fake MAE win caused by the wrong "
-    "baseline. Both were found by asking why a number looked better than "
-    "it had any right to.",
+    "Two claims in this project were retired by its own author: a fake "
+    "86% caused by a data leak, and an MAE 'win' that was only a win "
+    "against the wrong baseline. Neither was a broken calculation — both "
+    "were correct arithmetic pointed at the wrong comparison, which is "
+    "the harder kind of error to catch.",
     icon=":material/school:",
 )
 
