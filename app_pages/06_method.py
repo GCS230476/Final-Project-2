@@ -57,10 +57,10 @@ if df is not None:
     })
     st.dataframe(split_tbl, hide_index=True, width="stretch")
     st.caption(
-        "Row counts are slices of the feature table; each model's "
-        "effective training set is slightly smaller after dropping "
-        "rows without a target and, for the recurrent nets, forming "
-        "10-day windows (direction models train on 2,858 rows)."
+        "These counts are the rows each model actually saw — the 2,858 "
+        "training rows match the figure recorded in the trained models' "
+        "metadata. The recurrent nets consume the same rows as 10-day "
+        "windows, so they forfeit the first 9 rows of each slice."
     )
 
 st.markdown(
