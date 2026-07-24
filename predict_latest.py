@@ -42,23 +42,16 @@ with open(MODELS_DIR / "vol_meta.json") as f:
 FEATURE_COLS = DIR_META["feature_cols"]          # same 31 cols in both metas
 WINDOW = DIR_META["window"]                      # 10
 
-# ------------------------------------------------- DL volatility calibration
-# The recurrent volatility-regression nets are systematically biased low:
-# on the training split their sigmoid output averages ~0.088 against a true
-# mean of ~0.118 (they settle near the median of a right-skewed target), so
-# raw forecasts under-state volatility by roughly 25%.  Their *correlation*
-# with reality is fine (LSTM 0.27, the best of any model) -- only the level
-# is off, so a linear correction fixes it.
+# No post-hoc calibration is applied to the volatility nets.
 #
-# Coefficients below are least-squares fits of actual ~ a * prediction + b
-# computed on the TRAINING split only (no validation or test data used).
-# Applying them turns validation R2 from -0.006 to +0.051 (LSTM) and from
-# -0.046 to +0.027 (GRU).  Tree models are already well calibrated and are
-# left untouched.  Regenerate with verify_vol_regression.py.
-VOL_DL_CALIBRATION = {
-    "vol_reg_lstm.pt": (0.9884, 0.0141),
-    "vol_reg_gru.pt":  (0.8580, 0.0288),
-}
+# An earlier generation of these models was biased low and a linear
+# correction fitted on the training split repaired their R2. After the
+# regression was reformulated (the target is now the mean |return| over the
+# next 5 days, see run_full_pipeline.py) the nets carry a much stronger
+# signal, and the same correction measurably *hurts*: it moved LSTM's
+# validation R2 from +0.241 to +0.197 and its test R2 from +0.094 to
+# +0.049, because the residual bias differs between periods and a
+# train-fitted offset over-corrects. Raw sigmoid output is used instead.
 
 
 def _sigmoid(x: float) -> float:
@@ -190,15 +183,11 @@ def predict_latest(task, name, df=None):
     elif task == "vol_regression":
         # DL outputs a logit -> sigmoid to get back into [0,1] scaled space
         scaled = _sigmoid(raw) if is_dl else raw
-        if is_dl and fname in VOL_DL_CALIBRATION:
-            a, b = VOL_DL_CALIBRATION[fname]              # fitted on train only
-            out["vol_scaled_raw"] = round(scaled, 4)
-            scaled = a * scaled + b                       # remove the low bias
-            out["calibrated"] = True
         vmin, vmax = VOL_META["vmin"], VOL_META["vmax"]
         vol = scaled * (vmax - vmin) + vmin               # inverse min-max
         out["vol_scaled"] = round(scaled, 4)
         out["vol_forecast_pct"] = round(vol * 100, 4)     # % per day
+        out["horizon_days"] = VOL_META.get("horizon_days", 1)
 
     elif task == "vol_classification":
         prob_high = _sigmoid(raw) if is_dl else raw

@@ -1,4 +1,6 @@
-,Train %,Val %,Test %
-Random Forest,75.89,51.53,47.92
-XGBoost,76.24,50.43,44.01
-LightGBM,78.31,51.9,45.72
+,train,val,test,val_vs_base
+Random Forest,83.99,51.57,48.55,0.36
+XGBoost,93.46,54.36,46.62,3.15
+LightGBM,92.12,52.78,48.07,1.57
+LSTM,53.07,51.09,52.66,-0.12
+GRU,54.18,51.82,57.0,0.61

@@ -1,7 +1,10 @@
 {
-  "vmin": 0.0,
-  "vmax": 0.03175612356587054,
-  "vol_median": 0.10140372247974766,
+  "vmin": 0.000693742349501325,
+  "vmax": 0.015528130073169489,
+  "horizon_days": 5,
+  "target": "mean absolute simple return over the next 5 trading days, min-max scaled on train",
+  "baseline_val_mae_mean": 0.0972,
+  "baseline_val_mae_median": 0.0897,
   "feature_cols": [
     "eurusd_return",
     "dxy_return",

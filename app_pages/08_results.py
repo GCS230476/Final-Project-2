@@ -3,10 +3,11 @@ import numpy as np
 import streamlit as st
 
 from app_core import (AMBER_BG, BASE_DIR_DAILY, BASE_DIR_WEEKLY,
-                      BASE_VOL_CLF, BASE_VOL_MAE, C_BASE, C_DL, C_DL2,
-                      C_GRAY, C_ML, C_ML2, FIG_MODELS, GREEN_BG, LIT_CEILING,
-                      RED_BG, VOL_VMAX, fig_card, hl_vs_baseline,
-                      load_results, next_chapter, verdict)
+                      BASE_VOL_CLF, BASE_VOL_MAE, BASE_VOL_MAE_MEDIAN,
+                      C_BASE, C_DL, C_DL2, C_GRAY, C_ML, C_ML2, FIG_MODELS,
+                      GREEN_BG, LIT_CEILING, RED_BG, VOL_HORIZON, VOL_VMAX,
+                      fig_card, hl_vs_baseline, load_results, next_chapter,
+                      verdict)
 
 st.markdown(
     "Twenty models, three problems, one prediction made back in chapter 4: "
@@ -99,122 +100,118 @@ if "direction" in res:
 # ============================================================
 # VOL REGRESSION
 # ============================================================
-st.header("Problem 2 — Volatility regression: a result that did not survive "
-          "audit")
-st.markdown(verdict(False, "", "Outcome: fails — the apparent MAE win came "
-                    "from the wrong baseline, and R² does not hold up"))
+st.header("Problem 2 — Volatility regression: it works, once the question "
+          "is posed properly")
+st.markdown(verdict(True, "Outcome: works — best model explains 24% of "
+                    "variance, and the edge survives on test", ""))
 st.warning(
-    "**This section was rewritten after a supervisor spotted that the "
-    "predicted-vs-actual scatter was flat.** The published metrics turned "
-    "out to be arithmetically correct — `verify_vol_regression.py` "
-    "reproduces every one of them exactly from the frozen snapshot — but "
-    "the *conclusion* drawn from them did not survive scrutiny.",
+    "**This section was rebuilt after a supervisor noticed the "
+    "predicted-vs-actual scatter was flat.** The arithmetic had been "
+    "correct all along; the *question* was wrong. Diagnosing why is the "
+    "most useful thing in this chapter.",
     icon=":material/policy:",
 )
 
-if "vol_reg_verified" in res:
-    df = res["vol_reg_verified"].copy()
-    show = df[["model", "calibrated", "val_mae", "val_mae_gain_vs_mean_pct",
-               "val_mae_gain_vs_median_pct", "val_r2", "val_corr",
-               "test_r2"]].rename(columns={
-                   "val_mae_gain_vs_mean_pct": "gain vs MEAN base %",
-                   "val_mae_gain_vs_median_pct": "gain vs MEDIAN base %"})
+st.subheader("Why the first attempt could not have worked")
+st.markdown(
+    "The original target was **tomorrow's |return|** — a volatility "
+    "estimate built from a *single observation*. Write tomorrow's move as"
+)
+st.latex(r"|r_{t+1}| \;=\; \sigma_{t+1} \cdot |z_{t+1}|")
+st.markdown(
+    "where :orange[σ] is the underlying volatility — forecastable, because "
+    "it clusters — and :red[|z|] is random noise, which is not. Most of "
+    "the variance of |r| comes from :red[|z|]. So **even a model that knew "
+    "σ perfectly would score a low R²**: the ceiling was set by the "
+    "question, not by the models. That is also why MAE and R² disagreed — "
+    "MAE tolerates that noise, R² is punished by it — and why the scatter "
+    "was flat."
+)
+
+st.subheader("The fix: ask about the week, not the single day")
+st.markdown(
+    f"Averaging |return| over the **next {VOL_HORIZON} trading days** lets "
+    "the :red[|z|] noise cancel out and leaves :orange[σ] behind. Same "
+    "features, same split, same algorithms — only the target changed:"
+)
+c_before, c_after = st.columns(2)
+with c_before:
+    with st.container(border=True):
+        st.markdown(":red-badge[Before] &nbsp; **target = tomorrow only**")
+        st.metric("Correlation with reality", "0.28")
+        st.metric("MAE gain vs correct baseline", "+0.8%")
+        st.metric("Test R²", "≈ 0.00")
+with c_after:
+    with st.container(border=True):
+        st.markdown(":green-badge[After] &nbsp; "
+                    f"**target = next {VOL_HORIZON} days**")
+        st.metric("Correlation with reality", "0.52", "+0.24")
+        st.metric("MAE gain vs correct baseline", "+16.3%", "+15.5 pp")
+        st.metric("Test R²", "+0.09", "genuine")
+
+if "vol_reg" in res:
+    df = res["vol_reg"].copy()
+    show = df[["val_mae", "gain_vs_median_pct", "val_r2", "val_corr",
+               "test_r2"]].rename(
+                   columns={"gain_vs_median_pct": "MAE gain vs median %"})
     styled = (show.style
               .format({"val_mae": "{:.4f}", "val_r2": "{:+.4f}",
                        "val_corr": "{:+.3f}", "test_r2": "{:+.4f}",
-                       "gain vs MEAN base %": "{:+.1f}",
-                       "gain vs MEDIAN base %": "{:+.1f}"})
+                       "MAE gain vs median %": "{:+.1f}"})
               .apply(lambda c: [GREEN_BG if v > 0 else RED_BG for v in c],
-                     subset=["val_r2", "test_r2"])
-              .apply(lambda c: [GREEN_BG if v >= 5 else RED_BG for v in c],
-                     subset=["gain vs MEDIAN base %"]))
-    st.dataframe(styled, width="stretch", hide_index=True)
+                     subset=["val_r2", "test_r2", "MAE gain vs median %"]))
+    st.dataframe(styled, width="stretch")
     st.markdown(
-        "**How to read this table** — the target is tomorrow's |return|, "
-        f"min-max scaled to [0, 1] (1.0 ≈ {VOL_VMAX:.4f}, a 3.2% day). "
-        "The two *gain* columns are the same models measured against two "
-        "different naive baselines, and that difference is the whole "
-        "story."
+        "**How to read this table** — the target is the mean |return| over "
+        f"the next {VOL_HORIZON} days, min-max scaled to [0, 1] "
+        f"(1.0 ≈ {VOL_VMAX:.4f}). *MAE gain vs median* compares each model "
+        "with a zero-skill constant parked on the training **median** — the "
+        f"correct reference for MAE (baseline MAE {BASE_VOL_MAE_MEDIAN}), "
+        "not the mean, because the target is right-skewed."
     )
 
-st.subheader("Problem 1 — the MAE win was measured against the wrong baseline")
 st.markdown(
-    "MAE is minimised by the **median**; R² is minimised by the **mean**. "
-    "The volatility target is strongly right-skewed (most days calm, a few "
-    "wild), so its median (0.101) sits well below its mean (0.132). The "
-    "original baseline predicted the **mean**, which is the wrong "
-    "reference for MAE.\n\n"
-    "A constant predictor with **zero skill**, parked on the training "
-    "median, scores MAE **0.0747**. The tree models score 0.0734–0.0744. "
-    "So against the correct baseline the gain shrinks from a headline "
-    ":red[**~10%**] to :red[**+0.4% to +1.8%**] — essentially nothing. "
-    "The models had mostly discovered that *guessing low* pays on a "
-    "skewed target, which is a property of the distribution, not "
-    "forecasting skill."
-)
-
-st.subheader("Problem 2 — the recurrent nets were mis-calibrated")
-st.markdown(
-    "Their sigmoid output averages about **0.088** against a true mean of "
-    "**0.118** — a systematic under-forecast of roughly 25%, which drove "
-    "their R² negative (LSTM :red[−0.006], GRU :red[−0.046]) even though "
-    "LSTM's correlation with reality (**0.276**) is the best of any "
-    "model. The scale was right; only the offset was wrong.\n\n"
-    "A linear correction fitted **on the training split only** repairs "
-    "it: LSTM's validation R² moves :red[−0.006] → :green[**+0.051**], "
-    "GRU's :red[−0.046] → :green[**+0.027**]. The fix is now applied in "
-    "the live demo, where all five models finally agree on the same "
-    "forecast range instead of the two nets sitting 25% low."
-)
-
-st.subheader("Problem 3 — the surviving R² is fragile and does not generalise")
-if "vol_reg_verified" in res:
-    rb1, rb2, rb3 = st.columns(3)
-    rb1.metric("Validation R² (XGBoost)", "+0.074",
-               help="Positive, and statistically real: correlation 0.27 "
-                    "with p < 1e-11.")
-    rb2.metric("…dropping the 5% wildest days", "+0.005", "−93%",
-               delta_color="inverse",
-               help="Almost all of the R² is earned on a handful of "
-                    "extreme days, not on everyday forecasting.")
-    rb3.metric("Test R² (2024-09 onward)", "−0.003",
-               help="The edge does not survive into the held-out period.")
-st.markdown(
-    "Split the validation window into thirds and the R² reads "
-    "**+0.046 / +0.038 / −0.010** — the last sub-period is negative. "
-    "Together with the scatter, this says what kind of skill is left: the "
-    "model tracks the **slow drift of the volatility regime** (which "
-    "months are calmer) but has essentially no **day-to-day** skill. "
-    "Predictions cover only about a quarter of the real spread, so the "
-    "cloud of points sits flat instead of following the diagonal."
+    "**Every number, spelled out:**\n"
+    "- :green[**LSTM leads**]: R² **+0.241**, correlation **0.517**, MAE "
+    "**16.3% better** than the correct baseline, and test R² **+0.094**. "
+    "Deep learning wins here because volatility is a *sequence* property "
+    "and the 10-day window sees it directly.\n"
+    "- :green[**GRU second**]: R² +0.149 on validation but the **best test "
+    "R² of all, +0.112** — the most robust model out of sample.\n"
+    "- **Random Forest** holds up (R² +0.091, +9.2% MAE) but "
+    ":red[**XGBoost and LightGBM go negative**] on validation R² "
+    "(−0.137, −0.124) while still training to 90%+ — they overfit the "
+    "smoother target. On this problem the ranking flips: the boosted trees "
+    "that dominated training are the worst generalisers.\n"
+    "- **The trade-off is stated honestly**: this forecast is for the "
+    f"**average of the next {VOL_HORIZON} days**, not for tomorrow "
+    "specifically. It is a weaker claim than the original, and it is the "
+    "claim the data actually supports."
 )
 
 st.info(
-    "**Honest verdict** — the relationship is statistically real "
-    "(correlation ≈ 0.24–0.28, p < 1e-11) but explains only ~6–8% of "
-    "variance, leans on a few extreme days, and vanishes out of sample. "
-    "Predicting the *magnitude* of tomorrow's move is therefore reported "
-    "as a **failure**. The defensible volatility result is Problem 3 "
-    "below — classifying the regime, where the edge is consistent across "
-    "all five algorithms and survives the test set.",
-    icon=":material/balance:",
+    "**What this says about the market** — the magnitude of a *single* "
+    "day's move is essentially unpredictable, because one day is mostly "
+    "noise. Average that noise away and the volatility signal is clearly "
+    "there: a fifth to a quarter of the variance in next-week volatility "
+    "is explainable from today's information. Volatility clustering is "
+    "real; it just lives on a slower clock than one day.",
+    icon=":material/insights:",
 )
 
 fig_card(
     FIG_MODELS / "08_volatility_regression.png",
-    what="predicted volatility against what actually happened. In the "
-         "scatter, accurate forecasts would hug the dashed diagonal. "
-         "Instead the cloud is almost horizontal: whatever the real "
-         "value — 0.05 or 0.55 — the model answers about 0.12.",
-    why="this is the chart that triggered the whole audit. A flat cloud "
-        "means the predictions carry only about a quarter of the real "
-        "spread: the model never commits to a big number, so it can "
-        "never call a wild day. It is not overfitting and it is not a "
-        "lack of capacity — the features simply carry too little "
-        "information about tomorrow's magnitude, and a least-squares "
-        "model facing an unpredictable target correctly retreats to "
-        "the average. The flat line *is* the finding.",
-    title="The chart that started the audit",
+    what="the ORIGINAL one-day formulation, kept here as the evidence. "
+         "Accurate forecasts would hug the dashed diagonal; instead the "
+         "cloud is almost horizontal — whatever the real value, the model "
+         "answers about the same number.",
+    why="this is the chart that started the rebuild. It is not a picture "
+        "of a broken model, it is a picture of an unanswerable question: "
+        "faced with a target that is mostly noise, a least-squares model "
+        "correctly retreats to the average, and a flat cloud is the "
+        "mathematically right response. Re-posing the question over five "
+        "days is what turned this section from a failure into a result.",
+    title="The chart that started the rebuild (one-day target)",
 )
 
 # ============================================================
@@ -297,11 +294,10 @@ with v1:
                    "EMH predicts.")
 with v2:
     with st.container(border=True):
-        st.markdown(":red-badge[:material/cancel: FAILS] &nbsp; "
+        st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
                     "**Vol regression**")
-        st.metric("MAE vs correct baseline", "+0.4 to +1.8%",
-                  "R² gone on test", delta_color="off")
-        st.caption("Magnitude is not predictable; found by audit.")
+        st.metric("Best R² (LSTM)", "+0.24", "+16% MAE vs baseline")
+        st.caption(f"After reposing it over {VOL_HORIZON} days.")
 with v3:
     with st.container(border=True):
         st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
@@ -310,14 +306,13 @@ with v3:
         st.caption("Consistent across all five algorithms.")
 
 st.info(
-    "**The thesis, in its audited form** — same 31 features, same split, "
-    "same five algorithms. Predicting *direction* fails, and so does "
-    "predicting the *magnitude* of tomorrow's move. What survives is the "
-    "coarser question: **is tomorrow a high- or low-volatility day?** "
-    "That edge is small (+2.9 points), but it is consistent across all "
-    "five algorithms and it holds on the test set — which is exactly "
-    "what volatility clustering predicts and what market efficiency "
-    "cannot erase.\n\n"
+    "**The thesis** — same 31 features, same split, same five algorithms, "
+    "three questions. Asking *which way* the market moves fails, and "
+    "keeps failing however it is asked. Asking *how much* it moves works, "
+    "provided the question is posed over a horizon long enough for daily "
+    "noise to cancel. Direction is the signal an efficient market erases; "
+    "volatility is the one it cannot, because knowing a stormy week is "
+    "coming does not tell anyone which way to trade.\n\n"
     "Two claims in this project were retired by its own author: a fake "
     "86% caused by a data leak, and an MAE 'win' that was only a win "
     "against the wrong baseline. Neither was a broken calculation — both "

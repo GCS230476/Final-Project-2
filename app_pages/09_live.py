@@ -91,14 +91,18 @@ if st.button("Predict", type="primary", icon=":material/bolt:"):
                 icon=":material/balance:",
             )
     elif task == "vol_regression":
+        h = r.get("horizon_days", 1)
         m1, m2 = st.columns(2)
-        m1.metric("Forecast volatility", f"{r['vol_forecast_pct']:.3f}% / day",
-                  help="Typical calm day ~0.2-0.3%; stormy episodes "
-                       "0.6-1.0%. See the chapter-4 volatility chart "
-                       "for context.")
+        m1.metric(f"Forecast volatility, next {h} days",
+                  f"{r['vol_forecast_pct']:.3f}% / day",
+                  help=f"The average daily move expected over the next {h} "
+                       "trading days. Typical calm stretch ~0.2-0.3%; "
+                       "stormy episodes 0.6-1.0%. Chapter 8 explains why "
+                       "the forecast covers a week rather than a single "
+                       "day.")
         m2.metric("Scaled [0-1]", f"{r['vol_scaled']:.4f}",
-                  help=f"1.0 on this scale = {VOL_VMAX:.4f} "
-                       "(≈3.2%, the wildest day in training history).")
+                  help=f"1.0 on this scale = {VOL_VMAX:.4f}, the most "
+                       "volatile stretch in the training years.")
     else:
         m1, m2 = st.columns(2)
         m1.metric("Prediction", r["prediction"])
