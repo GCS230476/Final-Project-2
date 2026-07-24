@@ -149,10 +149,10 @@ with c_after:
         st.metric("MAE gain vs correct baseline", "+16.3%", "+15.5 pp")
         st.metric("Test R²", "+0.09", "genuine")
 
-if "vol_reg" in res:
+_vr_cols = ["val_mae", "gain_vs_median_pct", "val_r2", "val_corr", "test_r2"]
+if "vol_reg" in res and all(c in res["vol_reg"].columns for c in _vr_cols):
     df = res["vol_reg"].copy()
-    show = df[["val_mae", "gain_vs_median_pct", "val_r2", "val_corr",
-               "test_r2"]].rename(
+    show = df[_vr_cols].rename(
                    columns={"gain_vs_median_pct": "MAE gain vs median %"})
     styled = (show.style
               .format({"val_mae": "{:.4f}", "val_r2": "{:+.4f}",
@@ -169,6 +169,10 @@ if "vol_reg" in res:
         f"correct reference for MAE (baseline MAE {BASE_VOL_MAE_MEDIAN}), "
         "not the mean, because the target is right-skewed."
     )
+elif "vol_reg" in res:
+    st.info("Regression results are being regenerated — refresh in a "
+            "moment. Run `run_full_pipeline.py` to rebuild them.",
+            icon=":material/hourglass_top:")
 
 st.markdown(
     "**Every number, spelled out:**\n"
