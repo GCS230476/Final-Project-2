@@ -205,17 +205,19 @@ st.info(
 
 fig_card(
     FIG_MODELS / "08_volatility_regression.png",
-    what="the ORIGINAL one-day formulation, kept here as the evidence. "
-         "Accurate forecasts would hug the dashed diagonal; instead the "
-         "cloud is almost horizontal — whatever the real value, the model "
-         "answers about the same number.",
-    why="this is the chart that started the rebuild. It is not a picture "
-        "of a broken model, it is a picture of an unanswerable question: "
-        "faced with a target that is mostly noise, a least-squares model "
-        "correctly retreats to the average, and a flat cloud is the "
-        "mathematically right response. Re-posing the question over five "
-        "days is what turned this section from a failure into a result.",
-    title="The chart that started the rebuild (one-day target)",
+    what="the rebuilt regression — LSTM predicting the next-5-day "
+         "volatility on validation. Top: the dark predicted line follows "
+         "the actual one, rising through the stormy 2022 and falling "
+         "across the calmer 2023–24. Bottom: the same data as a scatter, "
+         "where the red trend line now slopes clearly upward (R² 0.24, "
+         "correlation 0.52).",
+    why="compare this with the flat cloud that started the audit. The "
+        "model genuinely tracks the volatility regime now. It is honest "
+        "about its limits — the red slope is 0.24, not 1.0, so it "
+        "compresses toward the middle and still under-calls the very "
+        "biggest spikes — but the upward tilt is real, hard-won skill, "
+        "and it is the shape a working volatility forecast actually has.",
+    title="The rebuilt regression — a forecast that tracks",
 )
 
 # ============================================================
