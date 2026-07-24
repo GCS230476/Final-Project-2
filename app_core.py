@@ -81,8 +81,12 @@ BASE_VOL_MAE = 0.082                # constant-prediction baseline MAE (scaled)
 LIT_CEILING = 58.52                 # Guyard & Deriaz 2024, 21 algorithms
 RENAISSANCE = 50.75                 # Renaissance Technologies win rate
 
-TRAIN_END = "2022-01-01"
-VAL_END = "2025-01-01"
+# Split actually used to train the models: a strictly chronological
+# 70 / 18 / 12 split of the usable rows. Verified by reproducing the stored
+# results (direction_meta.json records train_rows = 2858 = 70% of 4084).
+# These dates are the calendar boundaries those row fractions land on.
+TRAIN_END = "2021-06-24"
+VAL_END = "2024-05-28"
 
 
 # ---------- cached loaders ----------

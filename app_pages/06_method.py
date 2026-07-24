@@ -44,8 +44,9 @@ if df is not None:
 
     split_tbl = pd.DataFrame({
         "Slice": ["Train", "Validation", "Test"],
-        "Period": [f"2010 → {TRAIN_END}", f"{TRAIN_END} → {VAL_END}",
-                   f"{VAL_END} → today"],
+        "Share": ["70%", "18%", "12%"],
+        "Period": [f"2010-02-02 → {TRAIN_END}", f"{TRAIN_END} → {VAL_END}",
+                   f"{VAL_END} → end of snapshot"],
         "Rows": [f"{tr:,}", f"{va:,}", f"{te:,}"],
         "Role": [
             "The model's textbook: the only data it may learn from.",
@@ -63,13 +64,16 @@ if df is not None:
     )
 
 st.markdown(
-    "The boundaries are **fixed calendar dates, not percentages**: "
-    "training ends before 2022, validation covers 2022–2024, test is "
-    "2025 onward. A random shuffle — standard in most ML tutorials — "
-    "would be a disaster here: rows from 2024 would sit in the training "
-    "set while rows from 2015 sit in the test set, letting the model "
-    "'remember the future'. Chronological splitting simulates the only "
-    "situation that matters: standing at a date and predicting forward."
+    "The split is **strictly chronological**: the earliest 70% of trading "
+    "days are used for training, the next 18% for validation, the final "
+    "12% for test. Because the data is sorted by date, those shares land "
+    "on the calendar boundaries shown above — no row from a later date "
+    "ever appears in an earlier slice.\n\n"
+    "A random shuffle — standard in most ML tutorials — would be a "
+    "disaster here: rows from 2024 would sit in the training set while "
+    "rows from 2015 sit in the test set, letting the model 'remember the "
+    "future'. Chronological splitting simulates the only situation that "
+    "matters: standing at a date and predicting forward."
 )
 
 # ---------------- baselines ----------------
