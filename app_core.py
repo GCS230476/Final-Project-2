@@ -116,6 +116,10 @@ def load_results():
     p = MODELS_DIR / "volatility_regression_results.csv"
     if p.exists():
         data["vol_reg"] = pd.read_csv(p, index_col=0)
+    # Audited, reproducible version -- see verify_vol_regression.py
+    p = MODELS_DIR / "volatility_regression_verified.csv"
+    if p.exists():
+        data["vol_reg_verified"] = pd.read_csv(p)
     p = MODELS_DIR / "volatility_classification_results.csv"
     if p.exists():
         data["vol_clf"] = pd.read_csv(p, index_col=0)
