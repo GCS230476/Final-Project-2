@@ -91,23 +91,48 @@ VAL_END = "2024-11-25"
 
 
 # ---------- cached loaders ----------
+# Every loader takes a `stamp` argument built from the files' modification
+# times. Streamlit keys its cache on the arguments, so retraining a model
+# changes the stamp and the page picks up the new numbers on the next run.
+# Without this the app keeps serving whatever it read when it started.
+def _stamp(*paths):
+    return tuple(p.stat().st_mtime_ns if p.exists() else 0 for p in paths)
+
+
 @st.cache_data
-def load_master():
+def _load_master(stamp):
     if not MASTER_CSV.exists():
         return None
     df = pd.read_csv(MASTER_CSV, parse_dates=["date"])
     return df.dropna(subset=["eurusd"]).reset_index(drop=True)
 
 
+def load_master():
+    return _load_master(_stamp(MASTER_CSV))
+
+
 @st.cache_data
-def load_features_frozen():
+def _load_features_frozen(stamp):
     if not FEATURES_CSV.exists():
         return None
     return pd.read_csv(FEATURES_CSV, parse_dates=["date"])
 
 
-@st.cache_data
+def load_features_frozen():
+    return _load_features_frozen(_stamp(FEATURES_CSV))
+
+
+RESULT_CSVS = ["all_10_models_comparison.csv",
+               "volatility_regression_results.csv",
+               "volatility_classification_results.csv"]
+
+
 def load_results():
+    return _load_results(_stamp(*[MODELS_DIR / f for f in RESULT_CSVS]))
+
+
+@st.cache_data
+def _load_results(stamp):
     data = {}
     p = MODELS_DIR / "all_10_models_comparison.csv"
     if p.exists():
