@@ -138,68 +138,84 @@ c_before, c_after = st.columns(2)
 with c_before:
     with st.container(border=True):
         st.markdown(":red-badge[Before] &nbsp; **target = tomorrow only**")
-        st.metric("Correlation with reality", "0.28")
-        st.metric("MAE gain vs correct baseline", "+0.8%")
-        st.metric("Test R²", "≈ 0.00")
+        st.metric("Best validation R²", "0.078")
+        st.metric("Models with R² > 0", "4 of 5", "GRU was negative",
+                  delta_color="off")
 with c_after:
     with st.container(border=True):
         st.markdown(":green-badge[After] &nbsp; "
                     f"**target = next {VOL_HORIZON} days**")
-        st.metric("Correlation with reality", "0.52", "+0.24")
-        st.metric("MAE gain vs correct baseline", "+16.3%", "+15.5 pp")
-        st.metric("Test R²", "+0.09", "genuine")
+        st.metric("Best validation R²", "0.138", "+0.06")
+        st.metric("Models with R² > 0", "5 of 5", "all positive")
 
-_vr_cols = ["val_mae", "gain_vs_median_pct", "val_r2", "val_corr", "test_r2"]
-if "vol_reg" in res and all(c in res["vol_reg"].columns for c in _vr_cols):
+if "vol_reg" in res:
     df = res["vol_reg"].copy()
-    show = df[_vr_cols].rename(
-                   columns={"gain_vs_median_pct": "MAE gain vs median %"})
+    # Read whichever columns the training run produced: the notebook writes
+    # val_mae / val_r2 / test_mae / test_r2, and run_full_pipeline adds a few
+    # extras. Showing the intersection keeps this page working either way.
+    wanted = ["val_mae", "val_r2", "val_corr", "test_mae", "test_r2",
+              "gain_vs_median_pct"]
+    cols = [c for c in wanted if c in df.columns]
+    show = df[cols].rename(columns={"gain_vs_median_pct":
+                                    "MAE gain vs median %"})
+    fmt = {"val_mae": "{:.4f}", "val_r2": "{:+.4f}", "val_corr": "{:+.3f}",
+           "test_mae": "{:.4f}", "test_r2": "{:+.4f}",
+           "MAE gain vs median %": "{:+.1f}"}
+    green_red = [c for c in ["val_r2", "test_r2", "MAE gain vs median %"]
+                 if c in show.columns]
     styled = (show.style
-              .format({"val_mae": "{:.4f}", "val_r2": "{:+.4f}",
-                       "val_corr": "{:+.3f}", "test_r2": "{:+.4f}",
-                       "MAE gain vs median %": "{:+.1f}"})
+              .format({k: v for k, v in fmt.items() if k in show.columns})
               .apply(lambda c: [GREEN_BG if v > 0 else RED_BG for v in c],
-                     subset=["val_r2", "test_r2", "MAE gain vs median %"]))
+                     subset=green_red))
     st.dataframe(styled, width="stretch")
     st.markdown(
         "**How to read this table** — the target is the mean |return| over "
         f"the next {VOL_HORIZON} days, min-max scaled to [0, 1] "
-        f"(1.0 ≈ {VOL_VMAX:.4f}). *MAE gain vs median* compares each model "
-        "with a zero-skill constant parked on the training **median** — the "
-        f"correct reference for MAE (baseline MAE {BASE_VOL_MAE_MEDIAN}), "
-        "not the mean, because the target is right-skewed."
+        f"(1.0 ≈ {VOL_VMAX:.4f}, the most volatile stretch of the training "
+        "years). *val_r2* is the headline: :green[green means the model "
+        "explains real variance], :red[red means it does worse than "
+        "guessing the average]. MAE is shown too, but on a right-skewed "
+        "target it flatters everything, so R² carries the argument here."
     )
-elif "vol_reg" in res:
-    st.info("Regression results are being regenerated — refresh in a "
-            "moment. Run `run_full_pipeline.py` to rebuild them.",
-            icon=":material/hourglass_top:")
 
 st.markdown(
     "**Every number, spelled out:**\n"
-    "- :green[**LSTM leads**]: R² **+0.241**, correlation **0.517**, MAE "
-    "**16.3% better** than the correct baseline, and test R² **+0.094**. "
-    "Deep learning wins here because volatility is a *sequence* property "
-    "and the 10-day window sees it directly.\n"
-    "- :green[**GRU second**]: R² +0.149 on validation but the **best test "
-    "R² of all, +0.112** — the most robust model out of sample.\n"
-    "- **Random Forest** holds up (R² +0.091, +9.2% MAE) but "
-    ":red[**XGBoost and LightGBM go negative**] on validation R² "
-    "(−0.137, −0.124) while still training to 90%+ — they overfit the "
-    "smoother target. On this problem the ranking flips: the boosted trees "
-    "that dominated training are the worst generalisers.\n"
-    "- **The trade-off is stated honestly**: this forecast is for the "
-    f"**average of the next {VOL_HORIZON} days**, not for tomorrow "
-    "specifically. It is a weaker claim than the original, and it is the "
-    "claim the data actually supports."
+    "- :green[**LSTM leads on validation**]: R² **+0.138**, up from +0.022 "
+    "under the one-day target. Deep learning does well here because "
+    "volatility is a *sequence* property and the 10-day window sees it "
+    "directly.\n"
+    "- :green[**Random Forest is a close second**] at **+0.132**, so the "
+    "result does not depend on one exotic model.\n"
+    "- :green[**All five models are now positive**] on validation. Under "
+    "the old target GRU was outright negative (−0.039); it is now +0.097. "
+    "Five different algorithms agreeing is the strongest evidence that the "
+    "signal belongs to the data, not to a lucky configuration.\n"
+    "- **Test tells a different story than validation**: XGBoost and "
+    "LightGBM score best out of sample (**+0.184**, +0.166) while LSTM "
+    "slips to −0.037. Reported as-is — with a few hundred test rows this "
+    "reshuffling is exactly the sampling noise the methodology chapter "
+    "warns about, which is why models are chosen on validation.\n"
+    "- **MAE barely moves** (0.079–0.083 against a ~0.082 baseline). On a "
+    "right-skewed target MAE is a weak discriminator; R² is what "
+    "separates the models, and it is the honest headline."
+)
+
+st.warning(
+    f"**One consequence to state plainly:** the {VOL_HORIZON}-day target "
+    "is also used for the high/low classification below, so *that* problem "
+    "now asks whether the **next week** is turbulent, not tomorrow. Its "
+    "accuracy rose accordingly. That is a genuinely easier question — the "
+    "improvement is a change of horizon, not a better model.",
+    icon=":material/schedule:",
 )
 
 st.info(
     "**What this says about the market** — the magnitude of a *single* "
     "day's move is essentially unpredictable, because one day is mostly "
-    "noise. Average that noise away and the volatility signal is clearly "
-    "there: a fifth to a quarter of the variance in next-week volatility "
-    "is explainable from today's information. Volatility clustering is "
-    "real; it just lives on a slower clock than one day.",
+    "noise. Average that noise away and the signal appears: over a tenth "
+    "of the variance in next-week volatility is explainable from today's "
+    "information, consistently across five algorithms. Volatility "
+    "clustering is real; it just lives on a slower clock than one day.",
     icon=":material/insights:",
 )
 
@@ -224,37 +240,42 @@ fig_card(
 # VOL CLASSIFICATION
 # ============================================================
 st.header("Problem 3 — Volatility classification: the confirmation")
-st.markdown(verdict(True, "Outcome: works — all five models beat baseline "
-                    "by ~2.6–2.9 points, and it holds on test", ""))
 
 if "vol_clf" in res:
     df = res["vol_clf"].copy()
     champ = df["val"].idxmax()
+    # Derive the majority baseline from the table itself, so it always
+    # matches whatever training run produced these numbers.
+    base_clf = round(float((df["val"] - df["val_vs_base"]).mean()), 2)
+    st.markdown(verdict(
+        True, f"Outcome: works — all five models beat the {base_clf}% "
+        f"baseline, by {df['val_vs_base'].min():.1f} to "
+        f"{df['val_vs_base'].max():.1f} points", ""))
 
     def _mark_champ_clf(row):
         return [AMBER_BG if row.name == champ else "" for _ in row]
 
     styled = (df.style.format("{:.2f}")
-              .apply(lambda c: hl_vs_baseline(df["val"], BASE_VOL_CLF),
+              .apply(lambda c: hl_vs_baseline(df["val"], base_clf),
                      subset=["val"])
               .apply(lambda c: hl_vs_baseline(df["val_vs_base"], 0.0),
                      subset=["val_vs_base"])
               .apply(_mark_champ_clf, axis=1, subset=["train", "test"]))
     st.dataframe(styled, width="stretch")
     st.markdown(
-        "**How to read this table** — will tomorrow's |return| land "
-        "above or below the training-years median (HIGH or LOW vol)? "
-        "*val_vs_base* is the honest metric: accuracy minus the "
-        f"{BASE_VOL_CLF}% majority baseline. :green[Every val cell is "
-        "green] (beats baseline), amber marks the champion — the opposite "
-        "picture to the red-filled direction table."
+        f"**How to read this table** — will the next {VOL_HORIZON} days be "
+        "more or less turbulent than the training-years median (HIGH or "
+        "LOW vol)? *val_vs_base* is the honest metric: accuracy minus the "
+        f"{base_clf}% majority baseline. :green[Every val cell is green] "
+        "(beats baseline), amber marks the champion — the opposite picture "
+        "to the red-filled direction table."
     )
 
     fig, ax = plt.subplots(figsize=(9, 4))
     x = np.arange(len(df))
     ax.bar(x, df["val"], 0.55, color=C_ML)
-    ax.axhline(BASE_VOL_CLF, color=C_BASE, ls="--", lw=1.5,
-               label=f"Baseline {BASE_VOL_CLF}%")
+    ax.axhline(base_clf, color=C_BASE, ls="--", lw=1.5,
+               label=f"Baseline {base_clf}%")
     ax.axhline(50, color=C_GRAY, ls=":", lw=1, label="Coin flip 50%")
     for i, v in enumerate(df["val"]):
         ax.text(i, v + 0.15, f"{v:.1f}", ha="center", fontsize=8,
@@ -262,27 +283,29 @@ if "vol_clf" in res:
     ax.set_xticks(x)
     ax.set_xticklabels(df.index, rotation=25, ha="right", fontsize=8)
     ax.set_ylabel("Val accuracy (%)")
-    ax.set_ylim(48, 63)
+    ax.set_ylim(min(50, df["val"].min() - 4), df["val"].max() + 3)
     ax.legend(fontsize=8)
     st.pyplot(fig)
 
     st.markdown(
         "**Every number, spelled out:**\n"
-        "- **LSTM 59.93% val = +2.94 points over baseline** — the "
-        "champion, with GRU and LightGBM at 59.8% right behind.\n"
-        "- **All five models sit in a 0.4-point band** (59.56–59.93). "
-        "Five very different algorithms agreeing this tightly means "
-        "the ~3-point edge is a property of the *data*, not a lucky "
-        "seed. Compare the direction table, where the same five "
-        "algorithms scatter across 6 points.\n"
-        "- **Overfitting is tamed but visible**: trees train at 68–75% "
-        "(gap ~9–15 pts), the recurrent nets at 61–63% (gap ~1–3 "
-        "pts). Same ranking of discipline as in direction — but here "
-        "there is real signal, so everyone still clears the bar.\n"
-        "- **Test holds up**: 55.3–57.9%, and the two deep models keep "
-        "57.89% — the edge survives into 2025-26, unlike the "
-        "regression R². Classifying the regime is more robust than "
-        "predicting the exact magnitude."
+        f"- **{champ} leads on validation at {df.loc[champ, 'val']:.2f}%**, "
+        f"which is **+{df.loc[champ, 'val_vs_base']:.1f} points** over the "
+        f"{base_clf}% majority baseline.\n"
+        "- :green[**All five models clear the baseline**], and they do so "
+        "on the test set too. Five very different algorithms agreeing is "
+        "what makes this the most defensible result in the project — "
+        "compare the direction table, where the same five scatter around "
+        "their baseline and several land below it.\n"
+        "- **Overfitting is visible but not fatal**: the boosted trees "
+        "train around 81% against a 63% validation score, while the "
+        "recurrent nets stay much closer together. Same discipline "
+        "ranking as everywhere else in this project — but here there is "
+        "real signal, so every model still clears the bar.\n"
+        f"- **Note the horizon**: since the target now covers "
+        f"{VOL_HORIZON} days, these accuracies are not comparable with "
+        "the ~59% figures from the earlier one-day version. The question "
+        "changed, so the scoreboard changed with it."
     )
 
 # ============================================================
@@ -302,13 +325,18 @@ with v2:
     with st.container(border=True):
         st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
                     "**Vol regression**")
-        st.metric("Best R² (LSTM)", "+0.24", "+16% MAE vs baseline")
+        _best_r2 = res["vol_reg"]["val_r2"].max() if "vol_reg" in res else 0
+        st.metric("Best validation R²", f"+{_best_r2:.3f}", "5 of 5 positive")
         st.caption(f"After reposing it over {VOL_HORIZON} days.")
 with v3:
     with st.container(border=True):
         st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
                     "**Vol classification**")
-        st.metric("Accuracy vs baseline", f"+2.9 pp", "survives test")
+        if "vol_clf" in res:
+            _e = res["vol_clf"]["val_vs_base"]
+            st.metric("Accuracy vs baseline",
+                      f"+{_e.min():.1f} to +{_e.max():.1f} pp",
+                      "survives test")
         st.caption("Consistent across all five algorithms.")
 
 st.info(
