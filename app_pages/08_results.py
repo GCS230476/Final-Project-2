@@ -134,6 +134,26 @@ st.markdown(
     "the :red[|z|] noise cancel out and leaves :orange[σ] behind. Same "
     "features, same split, same algorithms — only the target changed:"
 )
+
+fig_card(
+    FIG_MODELS / "08_why_five_days.png",
+    what="the same Random Forest, trained twice on the same features and "
+         "the same split — only the target differs. Top row: what the "
+         "model is asked to predict. :red[Left] is a single day's "
+         "|return|, a jagged spike train with no visible structure; "
+         f":green[right] is the {VOL_HORIZON}-day average, where slow "
+         "waves appear — turbulent through 2022, calmer across 2023–24. "
+         "Bottom row: how closely each version can actually be tracked.",
+    why="this is the whole argument in one picture. A model can only "
+        "learn structure that exists in its target. Against the noisy "
+        "one-day target the best fit is nearly flat "
+        "(:red[slope 0.07, R² 0.066]) — not because the model is weak, "
+        "but because there is little to fit. Against the smoothed target "
+        "the same model tilts up (:green[slope 0.21, R² 0.132]) and "
+        "correlation rises from 0.26 to 0.45. Nothing about the "
+        "algorithm improved; the question simply became answerable.",
+    title="Why five days works and one day cannot",
+)
 c_before, c_after = st.columns(2)
 with c_before:
     with st.container(border=True):
