@@ -1,0 +1,41 @@
+model,tol_pip,train,val,test
+Random Forest,30,41.5,48.7,51.2
+Random Forest,40,52.3,60.9,64.5
+Random Forest,50,61.9,70.1,74.4
+Random Forest,55,65.8,74.5,77.5
+Random Forest,60,69.4,77.7,80.4
+Random Forest,70,75.4,83.8,85.0
+Random Forest,80,80.2,88.5,88.6
+Random Forest,100,87.6,93.9,93.5
+XGBoost,30,45.2,48.4,46.6
+XGBoost,40,55.4,60.0,62.1
+XGBoost,50,65.4,69.0,72.0
+XGBoost,55,70.1,73.2,76.3
+XGBoost,60,73.5,75.5,80.0
+XGBoost,70,79.0,82.4,84.8
+XGBoost,80,84.0,87.5,87.9
+XGBoost,100,90.8,93.7,94.4
+LightGBM,30,44.1,48.3,46.4
+LightGBM,40,55.3,60.3,61.8
+LightGBM,50,64.7,68.4,72.5
+LightGBM,55,69.8,73.0,75.1
+LightGBM,60,73.1,76.2,79.0
+LightGBM,70,78.5,83.1,85.0
+LightGBM,80,83.4,87.8,88.9
+LightGBM,100,90.5,93.0,94.0
+Ridge,30,40.8,49.2,48.8
+Ridge,40,51.7,59.7,64.0
+Ridge,50,60.9,70.2,73.7
+Ridge,55,65.5,73.6,75.8
+Ridge,60,69.2,76.8,79.2
+Ridge,70,75.0,84.4,85.5
+Ridge,80,79.8,88.1,88.9
+Ridge,100,87.1,93.7,93.0
+Naive (gia hom nay),30,40.5,48.8,51.0
+Naive (gia hom nay),40,51.5,61.1,63.5
+Naive (gia hom nay),50,61.1,70.2,74.6
+Naive (gia hom nay),55,65.4,74.2,77.5
+Naive (gia hom nay),60,68.7,77.2,80.4
+Naive (gia hom nay),70,74.7,83.1,85.5
+Naive (gia hom nay),80,79.9,88.1,88.6
+Naive (gia hom nay),100,87.6,94.1,93.5

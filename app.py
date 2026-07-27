@@ -38,6 +38,9 @@ pages = {
     "Demo": [
         st.Page("app_pages/09_live.py",
                 title="9 · Live prediction", icon=":material/bolt:"),
+        st.Page("app_pages/10_forecast_vn.py",
+                title="Dự báo ngày mai (bản thử)",
+                icon=":material/science:"),
     ],
 }
 

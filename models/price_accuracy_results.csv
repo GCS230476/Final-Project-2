@@ -1,0 +1,6 @@
+model,acc2dec_train,acc2dec_val,acc2dec_test,acc60pip_train,acc60pip_val,acc60pip_test,mae_pip_val,mae_pip_test
+Random Forest,54.7,62.2,65.2,69.4,77.7,80.4,39.8,39.0
+XGBoost,57.3,60.7,63.5,73.5,75.5,80.0,40.2,40.3
+LightGBM,56.4,59.9,62.6,73.1,76.2,79.0,40.6,40.6
+Ridge,54.8,62.3,63.0,69.2,76.8,79.2,40.2,40.0
+Naive (gia hom nay),54.4,61.9,64.5,68.7,77.2,80.4,39.7,38.9
