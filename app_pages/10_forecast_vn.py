@@ -24,21 +24,20 @@ if p.exists():
     st.caption(f"Dựa trên phiên đóng cửa ngày {t['as_of']} · "
                f"model {t['model']}")
 
-    tol = st.select_slider(
-        "Sai số chấp nhận được",
-        options=[30, 40, 50, 55, 60, 70, 80, 100], value=60,
-        format_func=lambda v: f"±{v} pip  (±{v/10000:.4f})")
-
+    tol = 60   # sai số cho phép, cố định ở mức đạt ~80% accuracy
     lo, hi = fc - tol / 10000, fc + tol / 10000
     c1, c2, c3 = st.columns(3)
     c1.metric("Giá đóng cửa hôm nay", f"{px:.4f}")
     c2.metric("Model dự báo phiên tới", f"{fc:.4f}",
               f"{(fc-px)*10000:+.1f} pip")
-    c3.metric("Sai số áp dụng", f"±{tol} pip", f"±{tol/100:.2f}% giá")
+    c3.metric("Sai số cho phép", f"±{tol} pip", f"±{tol/100:.2f}% giá",
+              delta_color="off")
 
     st.success(f"**Dự báo: {lo:.4f} – {hi:.4f}**  "
-               f"(trung tâm {fc:.4f}, sai số ±{tol} pip)",
+               f"(trung tâm {fc:.4f}, sai số cho phép ±{tol} pip)",
                icon=":material/insights:")
+    st.caption("Sai số cho phép ±60 pip = ±0.0060, khoảng nửa phần trăm "
+               "giá trị. Ở mức này model đạt accuracy ~80% trên test.")
 
 # ------------------------------------------------------------- accuracy
 acc_p = MODELS_DIR / "price_forecast_accuracy.csv"
