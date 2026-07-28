@@ -1,7 +1,7 @@
 {
   "vmin": 0.000693742349501325,
   "vmax": 0.015528130073169489,
-  "vol_median": 0.20633940668520737,
+  "vol_median": 0.20632964413664032,
   "horizon_days": 5,
   "feature_cols": [
     "eurusd_return",

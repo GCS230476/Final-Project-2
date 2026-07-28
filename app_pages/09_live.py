@@ -3,16 +3,17 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-from app_core import GRAPH_STYLE, LIVE_CSV, VOL_VMAX
+from app_core import (GRAPH_STYLE, LIVE_CSV, NAIVE_PRICE, VOL_VMAX, load_master,
+                      load_price)
 
 # Heavy imports (torch) live only on this page, so the story pages load fast.
-from predict_latest import REGISTRY, predict_latest, load_features
+from predict_latest import REGISTRY, load_features, predict_latest, predict_price
 
 st.markdown(
-    "The final chapter is the system itself: the frozen research models, "
-    "wired to a data pipeline that refreshes every weekday morning without "
-    "anyone touching it. Pick any of the twenty models and ask it about "
-    "tomorrow."
+    "The final chapter is the system itself: the frozen research models, wired "
+    "to a data pipeline that refreshes every weekday morning without anyone "
+    "touching it. Pick a model and a tolerance, and every question the project "
+    "asked is answered at once for the next session."
 )
 
 # ---------------- live pipeline ----------------
@@ -41,22 +42,24 @@ st.markdown(
     "for the chapter-8 results is never overwritten."
 )
 
-# ---------------- prediction ----------------
-st.subheader("Ask a model about tomorrow")
+# ---------------- controls ----------------
+st.subheader("Ask every model about the next session")
 
-TASK_LABELS = {
-    "Direction — next day (UP/DOWN)":         "direction_daily",
-    "Direction — next week (UP/DOWN)":        "direction_weekly",
-    "Volatility — next day (regression)":     "vol_regression",
-    "Volatility — high/low (classification)": "vol_classification",
-}
-
-c1, c2 = st.columns(2)
+c1, c2 = st.columns([1, 2])
 with c1:
-    task_label = st.selectbox("Task", list(TASK_LABELS.keys()))
-task = TASK_LABELS[task_label]
+    model_name = st.selectbox(
+        "Model", list(REGISTRY["direction_daily"].keys()),
+        help="Drives the direction and volatility answers. The price "
+             "forecaster is a single champion chosen on validation in "
+             "notebook 09, so it does not change with this setting.")
 with c2:
-    model_name = st.selectbox("Model", list(REGISTRY[task].keys()))
+    tol = st.segmented_control(
+        "Tolerance for the price forecast (pips)",
+        options=[30, 40, 50, 60, 80, 100], default=60,
+        format_func=lambda v: f"±{v}",
+        help="A price forecast counts as correct when it lands this close to "
+             "the actual close. 1 pip = 0.0001.")
+tol = tol or 60
 
 use_live = st.toggle("Use live data (auto-updated pipeline)",
                      value=LIVE_CSV.exists(), disabled=not LIVE_CSV.exists())
@@ -71,44 +74,98 @@ else:
     st.caption(f"Data through **{df_feat['date'].iloc[-1].date()}** "
                f"({len(df_feat):,} rows) — frozen research snapshot")
 
-if st.button("Predict", type="primary", icon=":material/bolt:"):
-    with st.spinner("Running model..."):
-        r = predict_latest(task, model_name, df_feat)
+# ---------------- prediction ----------------
+if st.button("Predict the next session", type="primary",
+             icon=":material/bolt:"):
+    with st.spinner("Running every model..."):
+        master = load_master()
+        last_close = (float(master["eurusd"].dropna().iloc[-1])
+                      if master is not None else None)
+        px = predict_price(df_feat, last_close)
+        out = {t: predict_latest(t, model_name, df_feat)
+               for t in ("direction_daily", "direction_weekly",
+                         "vol_regression", "vol_classification")}
 
-    if task in ("direction_daily", "direction_weekly"):
-        m1, m2 = st.columns(2)
-        m1.metric("Prediction", r["prediction"])
-        m2.metric("P(UP)", f"{r['prob_up']:.1%}",
-                  help="The model's probability, not a promise. "
-                       "Chapter 8: even the best direction model is "
-                       "right only ~54% of the time.")
-        if abs(r["prob_up"] - 0.5) < 0.05:
+    # ---- price -------------------------------------------------------
+    st.markdown("#### :orange[Price — the level for the next close]")
+    lo, hi = px["forecast"] - tol / 10000, px["forecast"] + tol / 10000
+    p1, p2, p3 = st.columns(3)
+    p1.metric("Today's close", f"{px['today']:.4f}")
+    p2.metric("Forecast next close", f"{px['forecast']:.4f}",
+              f"{px['move_pips']:+.1f} pip")
+    # as a share of the actual price, not the /100 shorthand: at 1.14 a
+    # 60-pip band is 0.53% of price, not 0.60%
+    pct = 100 * (tol / 10000) / px["today"]
+    p3.metric("Tolerance applied", f"±{tol} pip", f"±{pct:.2f}% of price",
+              delta_color="off")
+    st.success(f"**Forecast range: {lo:.4f} – {hi:.4f}** "
+               f"(centre {px['forecast']:.4f}, ±{tol} pip) · model "
+               f"{px['model']}", icon=":material/insights:")
+
+    price = load_price()
+    if price is not None:
+        row = price["acc"]
+        row = row[(row["tol_pip"] == tol)].set_index("model")
+        if px["model"] in row.index and NAIVE_PRICE in row.index:
+            a1, a2 = st.columns(2)
+            a1.metric(f"How often this lands within ±{tol} pip (test)",
+                      f"{row.loc[px['model'], 'test']:.1f}%")
+            a2.metric("Same tolerance, 'tomorrow = today'",
+                      f"{row.loc[NAIVE_PRICE, 'test']:.1f}%",
+                      f"{row.loc[px['model'], 'test'] - row.loc[NAIVE_PRICE, 'test']:+.1f} pp",
+                      delta_color="off")
             st.warning(
-                "Probability within 5 points of a coin flip — the model "
-                "has low conviction. For direction this is the *normal, "
-                "honest* state: chapter 1 explains why a near-50% answer "
-                "is what an efficient market should produce.",
-                icon=":material/balance:",
-            )
-    elif task == "vol_regression":
-        h = r.get("horizon_days", 1)
-        m1, m2 = st.columns(2)
-        m1.metric(f"Forecast volatility, next {h} days",
-                  f"{r['vol_forecast_pct']:.3f}% / day",
-                  help=f"The average daily move expected over the next {h} "
-                       "trading days. Typical calm stretch ~0.2-0.3%; "
-                       "stormy episodes 0.6-1.0%. Chapter 8 explains why "
-                       "the forecast covers a week rather than a single "
-                       "day.")
-        m2.metric("Scaled [0-1]", f"{r['vol_scaled']:.4f}",
-                  help=f"1.0 on this scale = {VOL_VMAX:.4f}, the most "
-                       "volatile stretch in the training years.")
-    else:
-        m1, m2 = st.columns(2)
-        m1.metric("Prediction", r["prediction"])
-        m2.metric("P(HIGH)", f"{r['prob_high']:.1%}",
-                  help="Probability that tomorrow's |return| exceeds "
-                       "the training-years median.")
+                "The naive rule scores the same. Chapter 8 explains why: the "
+                "next close is essentially a random walk, so the tolerance is "
+                "doing the work here, not the algorithm.",
+                icon=":material/priority_high:")
 
-    st.caption("Academic demonstration only — not financial advice, and "
-               "chapter 8's limitations apply to every number above.")
+    st.divider()
+
+    # ---- direction ---------------------------------------------------
+    st.markdown("#### :orange[Direction — which way it moves]")
+    d1, d2 = st.columns(2)
+    for col, key, label in [(d1, "direction_daily", "Next day"),
+                            (d2, "direction_weekly", "Next week")]:
+        r = out[key]
+        with col:
+            with st.container(border=True):
+                st.markdown(f"**{label}**")
+                st.metric("Prediction", r["prediction"])
+                st.metric("P(UP)", f"{r['prob_up']:.1%}")
+    if min(abs(out[k]["prob_up"] - 0.5) for k in
+           ("direction_daily", "direction_weekly")) < 0.05:
+        st.warning(
+            "At least one probability sits within 5 points of a coin flip — "
+            "low conviction. For direction this is the *normal, honest* "
+            "state: chapter 1 explains why a near-50% answer is what an "
+            "efficient market should produce.",
+            icon=":material/balance:")
+
+    st.divider()
+
+    # ---- volatility --------------------------------------------------
+    st.markdown("#### :orange[Volatility — how much it moves]")
+    reg, clf = out["vol_regression"], out["vol_classification"]
+    h = reg.get("horizon_days", 1)
+    v1, v2, v3 = st.columns(3)
+    v1.metric(f"Forecast volatility, next {h} days",
+              f"{reg['vol_forecast_pct']:.3f}% / day",
+              help="The average daily move expected over the next "
+                   f"{h} trading days. Typical calm stretch ~0.2-0.3%; "
+                   "stormy episodes 0.6-1.0%.")
+    v2.metric("Scaled [0-1]", f"{reg['vol_scaled']:.4f}",
+              help=f"1.0 on this scale = {VOL_VMAX:.4f}, the most volatile "
+                   "stretch in the training years.")
+    v3.metric("Regime", clf["prediction"],
+              f"P(HIGH) {clf['prob_high']:.1%}", delta_color="off")
+    st.info(
+        "This is the one block on the page with a measurable edge — chapter 8 "
+        "shows the volatility models beating their baseline consistently, "
+        "while direction and price level do not.",
+        icon=":material/insights:")
+
+    st.caption(f"All answers from **{model_name}** (price: {px['model']}), "
+               f"data as of **{px['as_of']}**. Academic demonstration only — "
+               "not financial advice, and chapter 8's limitations apply to "
+               "every number above.")

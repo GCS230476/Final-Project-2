@@ -47,7 +47,7 @@ WINDOW = DIR_META["window"]                      # 10
 # An earlier generation of these models was biased low and a linear
 # correction fitted on the training split repaired their R2. After the
 # regression was reformulated (the target is now the mean |return| over the
-# next 5 days, see run_full_pipeline.py) the nets carry a much stronger
+# next 5 days, see notebook 08) the nets carry a much stronger
 # signal, and the same correction measurably *hurts*: it moved LSTM's
 # validation R2 from +0.241 to +0.197 and its test R2 from +0.094 to
 # +0.049, because the residual bias differs between periods and a
@@ -195,6 +195,34 @@ def predict_latest(task, name, df=None):
         out["prob_high"] = round(prob_high, 4)
 
     return out
+
+
+# ----------------------------------------------------------------- price
+# The price forecaster is a single saved champion (notebook 09) rather than a
+# family of five, because the notebook selects one winner on validation. It
+# learns a RETURN; the price is rebuilt as today * (1 + r), which is what makes
+# it usable on a price level the training years never contained.
+def predict_price(df=None, last_close=None):
+    """Next-session EUR/USD level from the champion saved by notebook 09."""
+    if df is None:
+        df = load_features()
+    bundle = joblib.load(MODELS_DIR / "price_forecaster.pkl")
+    feats = bundle["features"]
+
+    x = df[feats].values[-1:]
+    if bundle["scaled"]:
+        x = bundle["scaler"].transform(x)
+    r = float(bundle["model"].predict(x)[0])
+
+    if last_close is None:                       # fall back to the frozen file
+        master = pd.read_csv(ROOT / "data" / "interim" / "fx_master_dataset.csv",
+                             parse_dates=["date"])
+        last_close = float(master["eurusd"].dropna().iloc[-1])
+
+    return {"model": bundle["name"], "today": last_close,
+            "forecast": last_close * (1 + r),
+            "move_pips": r * last_close * 10000,
+            "as_of": str(df["date"].iloc[-1].date())}
 
 
 # ----------------------------------------------------------------- self-test

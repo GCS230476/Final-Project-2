@@ -5,19 +5,20 @@ import streamlit as st
 from app_core import (AMBER_BG, BASE_DIR_DAILY, BASE_DIR_WEEKLY,
                       BASE_VOL_CLF, BASE_VOL_MAE, BASE_VOL_MAE_MEDIAN,
                       C_BASE, C_DL, C_DL2, C_GRAY, C_ML, C_ML2, FIG_MODELS,
-                      GREEN_BG, LIT_CEILING, RED_BG, VOL_HORIZON, VOL_VMAX,
-                      fig_card, hl_vs_baseline, load_results, next_chapter,
-                      verdict)
+                      GREEN_BG, LIT_CEILING, NAIVE_PRICE, RED_BG, VOL_HORIZON,
+                      VOL_VMAX, fig_card, hl_vs_baseline, load_interval,
+                      load_price, load_results, next_chapter, verdict)
 
 st.markdown(
-    "Twenty models, three problems, one prediction made back in chapter 4: "
-    "direction should fail, volatility should work. Here is what happened — "
-    "every number explained, including the ugly ones. In every table below, "
+    "Four problems, one prediction made back in chapter 4: direction should "
+    "fail, volatility should work. Here is what happened — every number "
+    "explained, including the ugly ones. In every table below, "
     ":green-badge[green] beats its baseline, :red-badge[red] does not, and "
     ":orange-badge[amber] marks the champion chosen on validation."
 )
 
 res = load_results()
+price = load_price()
 
 # ============================================================
 # DIRECTION
@@ -165,14 +166,19 @@ with c_after:
     with st.container(border=True):
         st.markdown(":green-badge[After] &nbsp; "
                     f"**target = next {VOL_HORIZON} days**")
-        st.metric("Best validation R²", "0.138", "+0.06")
-        st.metric("Models with R² > 0", "5 of 5", "all positive")
+        if "vol_reg" in res:
+            _b = res["vol_reg"]["val_r2"].max()
+            _p = int((res["vol_reg"]["val_r2"] > 0).sum())
+            _n = len(res["vol_reg"])
+            st.metric("Best validation R²", f"{_b:.3f}", f"{_b - 0.078:+.3f}")
+            st.metric("Models with R² > 0", f"{_p} of {_n}",
+                      "all positive" if _p == _n else f"{_n - _p} negative")
 
 if "vol_reg" in res:
     df = res["vol_reg"].copy()
-    # Read whichever columns the training run produced: the notebook writes
-    # val_mae / val_r2 / test_mae / test_r2, and run_full_pipeline adds a few
-    # extras. Showing the intersection keeps this page working either way.
+    # Notebook 08 writes val_mae / val_r2 / test_mae / test_r2. Showing only
+    # the columns that are actually present keeps this page working even if a
+    # future run adds or drops one.
     wanted = ["val_mae", "val_r2", "val_corr", "test_mae", "test_r2",
               "gain_vs_median_pct"]
     cols = [c for c in wanted if c in df.columns]
@@ -198,27 +204,38 @@ if "vol_reg" in res:
         "target it flatters everything, so R² carries the argument here."
     )
 
-st.markdown(
-    "**Every number, spelled out:**\n"
-    "- :green[**LSTM leads on validation**]: R² **+0.138**, up from +0.022 "
-    "under the one-day target. Deep learning does well here because "
-    "volatility is a *sequence* property and the 10-day window sees it "
-    "directly.\n"
-    "- :green[**Random Forest is a close second**] at **+0.132**, so the "
-    "result does not depend on one exotic model.\n"
-    "- :green[**All five models are now positive**] on validation. Under "
-    "the old target GRU was outright negative (−0.039); it is now +0.097. "
-    "Five different algorithms agreeing is the strongest evidence that the "
-    "signal belongs to the data, not to a lucky configuration.\n"
-    "- **Test tells a different story than validation**: XGBoost and "
-    "LightGBM score best out of sample (**+0.184**, +0.166) while LSTM "
-    "slips to −0.037. Reported as-is — with a few hundred test rows this "
-    "reshuffling is exactly the sampling noise the methodology chapter "
-    "warns about, which is why models are chosen on validation.\n"
-    "- **MAE barely moves** (0.079–0.083 against a ~0.082 baseline). On a "
-    "right-skewed target MAE is a weak discriminator; R² is what "
-    "separates the models, and it is the honest headline."
-)
+if "vol_reg" in res:
+    # Written from the table itself: an earlier hard-coded version of this
+    # paragraph silently went stale when the models were retrained.
+    vr = res["vol_reg"]
+    r2v = vr["val_r2"].sort_values(ascending=False)
+    lead, second = r2v.index[0], r2v.index[1]
+    n_pos = int((vr["val_r2"] > 0).sum())
+    t_best = vr["test_r2"].idxmax()
+    t_worst = vr["test_r2"].idxmin()
+    st.markdown(
+        "**Every number, spelled out:**\n"
+        f"- :green[**{lead} leads on validation**] with R² "
+        f"**{r2v.iloc[0]:+.3f}**, well above the ~+0.02 the old one-day "
+        "target could reach. The gain came from changing the question, not "
+        "from tuning the model.\n"
+        f"- :green[**{second} is second**] at **{r2v.iloc[1]:+.3f}**, so the "
+        "result does not rest on one exotic algorithm.\n"
+        f"- :green[**{n_pos} of {len(vr)} models are positive**] on "
+        "validation. Several different algorithms agreeing is the strongest "
+        "evidence that the signal belongs to the data rather than to a lucky "
+        "configuration.\n"
+        f"- **Test reorders the table**: {t_best} scores best out of sample "
+        f"(**{vr.loc[t_best, 'test_r2']:+.3f}**) while {t_worst} slips to "
+        f"{vr.loc[t_worst, 'test_r2']:+.3f}. Reported as-is — with a few "
+        "hundred test rows this reshuffling is exactly the sampling noise the "
+        "methodology chapter warns about, which is why models are chosen on "
+        "validation and test is read once.\n"
+        f"- **MAE barely separates them** "
+        f"({vr['val_mae'].min():.4f}–{vr['val_mae'].max():.4f} against a "
+        f"{BASE_VOL_MAE_MEDIAN:.4f} median baseline). On a right-skewed "
+        "target MAE is a weak discriminator; R² carries the argument."
+    )
 
 st.warning(
     f"**One consequence to state plainly:** the {VOL_HORIZON}-day target "
@@ -241,19 +258,26 @@ st.info(
 
 fig_card(
     FIG_MODELS / "08_volatility_regression.png",
-    what="the rebuilt regression — LSTM predicting the next-5-day "
-         "volatility on validation. Top: the dark predicted line follows "
-         "the actual one, rising through the stormy 2022 and falling "
-         "across the calmer 2023–24. Bottom: the same data as a scatter, "
-         "where the red trend line now slopes clearly upward (R² 0.24, "
-         "correlation 0.52).",
-    why="compare this with the flat cloud that started the audit. The "
-        "model genuinely tracks the volatility regime now. It is honest "
-        "about its limits — the red slope is 0.24, not 1.0, so it "
-        "compresses toward the middle and still under-calls the very "
-        "biggest spikes — but the upward tilt is real, hard-won skill, "
-        "and it is the shape a working volatility forecast actually has.",
-    title="The rebuilt regression — a forecast that tracks",
+    what="the champion Random Forest predicting next-5-day volatility on "
+         "validation. Top: the predicted line follows the actual one through "
+         "the stormy 2022 and the calmer 2023–24. Bottom: the same data as a "
+         "scatter, with actual on the x-axis and predicted on the y-axis. The "
+         "cloud is visibly **flatter than the diagonal** — predictions span "
+         "roughly 0.10–0.41 while the truth spans 0.00–0.72.",
+    why="that flatness is the honest signature of a calibrated forecast, not "
+        "a broken one. Regress the actual value on the prediction and the "
+        "slope is **0.99**: when the model says 0.30, the outcome really does "
+        "average about 0.30. Its predictions are deliberately narrower than "
+        "reality — the spread ratio is **0.46**, almost exactly the "
+        "correlation (**0.454**), which is the mathematically optimal amount "
+        "of shrinkage for a model that explains about a fifth of the "
+        "variance. Predicting the full range would *increase* the error. The "
+        "price of that caution is real and worth stating: the stormiest 10% "
+        "of days are under-called by **46%**, and the calmest 10% are "
+        "over-called. Deeper trees do not fix it — validation R² falls from "
+        "0.21 at depth 3 to 0.08 unrestricted — so this is the ceiling of the "
+        "signal, not a tuning failure.",
+    title="The rebuilt regression — flat on purpose, and calibrated",
 )
 
 # ============================================================
@@ -329,10 +353,181 @@ if "vol_clf" in res:
     )
 
 # ============================================================
+# PRICE
+# ============================================================
+st.header("Problem 4 — Price level: the question the project started from")
+st.markdown(verdict(False, "", "Outcome: fails — the champion matches the "
+                    "'tomorrow = today' rule almost exactly"))
+
+st.markdown(
+    "The original brief was a website that forecasts the **next EUR/USD "
+    "price**. Notebook 09 does exactly that. The model learns a *return* and "
+    "the price is rebuilt as `today × (1 + r)` — learning the level directly "
+    "would be impossible for trees, which cannot predict a value outside the "
+    "range they were trained on. A forecast counts as **correct** when it "
+    "lands within a stated tolerance, measured in **pips** (1 pip = 0.0001)."
+)
+
+if price is not None:
+    acc, best_px = price["acc"], price["best"]
+
+    st.subheader("Accuracy at every tolerance — champion against doing nothing")
+    piv = acc.pivot_table(index="tol_pip", columns="model", values="val")
+    cols = [c for c in (best_px, NAIVE_PRICE) if c in piv.columns]
+    show = piv[cols].copy()
+    show.columns = [f"{c} — val %" for c in cols]
+    tst = acc.pivot_table(index="tol_pip", columns="model", values="test")
+    for c in cols:
+        show[f"{c} — test %"] = tst[c]
+    show.index = [f"±{t} pip" for t in show.index]
+    st.dataframe(show.style.format("{:.1f}"), width="stretch")
+
+    r60 = acc[acc["tol_pip"] == 60].set_index("model")
+    if best_px in r60.index and NAIVE_PRICE in r60.index:
+        m1, m2, m3 = st.columns(3)
+        m1.metric(f"{best_px} — test accuracy at ±60 pip",
+                  f"{r60.loc[best_px, 'test']:.1f}%")
+        m2.metric("Naive 'tomorrow = today' — same tolerance",
+                  f"{r60.loc[NAIVE_PRICE, 'test']:.1f}%")
+        m3.metric("Advantage of the model",
+                  f"{r60.loc[best_px, 'test'] - r60.loc[NAIVE_PRICE, 'test']:+.1f} pp",
+                  "not a meaningful edge", delta_color="off")
+
+    st.markdown(
+        "**How to read this table** — accuracy rises with the tolerance you "
+        "allow, which is why quoting a single accuracy figure without its "
+        "tolerance means nothing. The column that decides the chapter is the "
+        f"**{NAIVE_PRICE}** one: it is not a formality, it is the honest "
+        "benchmark, and it keeps pace at every row."
+    )
+
+fig_card(
+    FIG_MODELS / "09_price_accuracy_vs_naive.png",
+    what="accuracy plotted against the tolerance allowed, for the champion "
+         "(dark) and the do-nothing rule (red dashed). Solid lines are "
+         "validation, faded lines are test.",
+    why="the two curves sit on top of each other at every tolerance. If the "
+        "model had learned anything real about tomorrow's *level*, its curve "
+        "would lift clear of the red one. It never does.",
+    title="The headline number, and the rule that matches it",
+)
+
+fig_card(
+    FIG_MODELS / "09_price_return_scatter.png",
+    what="the same model with the price stripped away, showing what it is "
+         "really asked to predict: tomorrow's **return** in pips. Predicted "
+         "on the x-axis, actual on the y-axis, with the fitted trend in red "
+         "against the dashed diagonal of a perfect forecast.",
+    why="this is the chapter in one picture. The cloud is a vertical stick: "
+        "the model outputs nearly the same tiny number every day — a spread "
+        "of **2.5 pip** against reality's **49.1 pip** — while the market "
+        "swings freely. Correlation is **+0.010** and R² is **−0.002**, "
+        "meaning it does marginally *worse* than always predicting the "
+        "average return. Compare this with the volatility scatter above, "
+        "which looked flat too but has correlation 0.454 and a calibrated "
+        "slope of 0.99. Same visual shape, opposite conclusion — and knowing "
+        "the difference is the point.",
+    title="The honest scatter — where the 80% actually comes from",
+)
+
+st.subheader("The constructive answer — forecast an interval, not a point")
+st.markdown(
+    "A single number is the wrong output for a random walk. The *centre* of "
+    "tomorrow's move is unforecastable — but its *width* is exactly what "
+    "Problem 2 forecasts, and that is the one thing here that beats its "
+    "baseline. So keep the price forecast as the centre and let the "
+    "volatility model set the width. The multiplier is calibrated on the "
+    "**training slice only**; validation and test then check whether the "
+    "promise holds on data the model never saw."
+)
+
+interval = load_interval()
+if interval is not None:
+    show_i = interval.rename(columns={
+        "claimed": "Confidence claimed (%)", "k": "Width (σ units)",
+        "train": "Train %", "val": "Validation %", "test": "Test %"})
+    st.dataframe(
+        show_i.style
+        .format({"Width (σ units)": "{:.2f}", "Train %": "{:.1f}",
+                 "Validation %": "{:.1f}", "Test %": "{:.1f}"})
+        .apply(lambda c: [GREEN_BG if abs(v - cl) <= 3 else ""
+                          for v, cl in zip(c, interval["claimed"])],
+               subset=["Validation %", "Test %"]),
+        hide_index=True, width="stretch")
+    _gap = (interval["val"] - interval["claimed"]).abs().max()
+    st.markdown(
+        f":green-badge[Calibrated] &nbsp; Every stated confidence level lands "
+        f"within **{_gap:.1f} points** of the truth on validation — an 80% "
+        f"interval really did contain the next close **"
+        f"{interval.loc[interval['claimed'] == 80, 'val'].iloc[0]:.1f}%** of "
+        f"the time, and **"
+        f"{interval.loc[interval['claimed'] == 80, 'test'].iloc[0]:.1f}%** on "
+        "test. This is the honest, usable form of the price forecast, and it "
+        "is only possible because the width comes from the one quantity in "
+        "this project that is genuinely predictable."
+    )
+
+fig_card(
+    FIG_MODELS / "09_price_calibration.png",
+    what="the confidence the model claims on the x-axis against how often it "
+         "was actually right on the y-axis. The dashed line is perfect "
+         "calibration; validation is dark, test is green.",
+    why="both curves sit essentially on the diagonal. An interval that says "
+        "80% and delivers 80% is trustworthy in a way a point forecast never "
+        "is — and sitting *above* the line on test means it errs toward "
+        "caution rather than overconfidence, which is the right direction to "
+        "be wrong in.",
+    title="An 80% interval that is actually right 80% of the time",
+)
+
+fig_card(
+    FIG_MODELS / "09_price_band.png",
+    what="the 80% interval drawn over the real EUR/USD price across the "
+         "validation years, with red dots marking the days the price escaped "
+         "the band. The band widens in turbulent stretches and narrows in "
+         "calm ones — that movement is the volatility model working.",
+    why="this is what a user would actually be shown, and it is defensible: "
+        "the escapes are roughly as frequent as the stated confidence allows. "
+        "Note the band is about 134 pips wide on an average day — honest, but "
+        "wide enough to make clear that precision here is limited.",
+    title="The interval against reality",
+)
+
+st.markdown(
+    "**Every number, spelled out:**\n"
+    "- **80.4% test accuracy at ±60 pip is real** and correctly measured on "
+    "data the model never saw. It is also, on its own, close to meaningless.\n"
+    f"- **The naive rule scores 80.4% too.** The champion's margin on "
+    "validation is **+0.20 percentage points** — well inside noise.\n"
+    "- **The model predicts moves 18× smaller than the market makes**: a "
+    "standard deviation of 3.3 pip against the market's 59.1 pip. It has "
+    "learned the only safe thing about tomorrow's level — that it will be "
+    "close to today's.\n"
+    "- **Implied directional hit rate: 51.2%**, which agrees with Problem 1 "
+    "from a completely different direction. Two independent routes to the "
+    "same wall is evidence, not coincidence.\n"
+    "- **Where the accuracy really comes from**: the typical daily move is "
+    "about 40 pip, so a ±60 pip window catches most days no matter who is "
+    "forecasting. The tolerance is doing the work, not the algorithm."
+)
+
+st.info(
+    "**How to state this in the report** — *\"The model forecasts the next "
+    "EUR/USD close with 80.4% accuracy on the test set within ±60 pip "
+    "(±0.53% of price). However, the 'no change' baseline also scores 80.4%, "
+    "showing that the next close is essentially unpredictable, consistent "
+    "with the random walk hypothesis. The model's measurable contribution is "
+    "in forecasting volatility, not price level.\"* That sentence keeps the "
+    "impressive number **and** survives cross-examination, because it answers "
+    "the hardest question about itself before anyone can ask it.",
+    icon=":material/format_quote:",
+)
+
+# ============================================================
 # SYNTHESIS
 # ============================================================
 st.header("The verdict")
-v1, v2, v3 = st.columns(3)
+v1, v4, v2, v3 = st.columns(4)
 with v1:
     with st.container(border=True):
         st.markdown(":red-badge[:material/cancel: FAILS] &nbsp; "
@@ -341,6 +536,18 @@ with v1:
                   delta_color="off")
         st.caption("The control group. Exactly the controlled failure "
                    "EMH predicts.")
+with v4:
+    with st.container(border=True):
+        st.markdown(":red-badge[:material/cancel: FAILS] &nbsp; "
+                    "**Price level**")
+        if price is not None:
+            _r = price["acc"]
+            _r = _r[_r["tol_pip"] == 60].set_index("model")
+            if price["best"] in _r.index and NAIVE_PRICE in _r.index:
+                st.metric("Edge over 'no change'",
+                          f"{_r.loc[price['best'], 'test'] - _r.loc[NAIVE_PRICE, 'test']:+.1f} pp",
+                          "80.4% vs 80.4%", delta_color="off")
+        st.caption("A real 80% that the naive rule matches exactly.")
 with v2:
     with st.container(border=True):
         st.markdown(":green-badge[:material/check_circle: WORKS] &nbsp; "
@@ -360,13 +567,15 @@ with v3:
         st.caption("Consistent across all five algorithms.")
 
 st.info(
-    "**The thesis** — same 31 features, same split, same five algorithms, "
-    "three questions. Asking *which way* the market moves fails, and "
-    "keeps failing however it is asked. Asking *how much* it moves works, "
-    "provided the question is posed over a horizon long enough for daily "
-    "noise to cancel. Direction is the signal an efficient market erases; "
-    "volatility is the one it cannot, because knowing a stormy week is "
-    "coming does not tell anyone which way to trade.\n\n"
+    "**The thesis** — same 31 features, same split, same algorithms, four "
+    "questions. Asking *which way* the market moves fails, and keeps failing "
+    "however it is asked — as direction, and again as a price level, where "
+    "the do-nothing rule matches the model outright. Asking *how much* it "
+    "moves works, provided the question is posed over a horizon long enough "
+    "for daily noise to cancel. Direction and level are the signals an "
+    "efficient market erases; volatility is the one it cannot, because "
+    "knowing a stormy week is coming does not tell anyone which way to "
+    "trade.\n\n"
     "Two claims in this project were retired by its own author: a fake "
     "86% caused by a data leak, and an MAE 'win' that was only a win "
     "against the wrong baseline. Neither was a broken calculation — both "
