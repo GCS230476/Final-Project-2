@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-from app_core import (GRAPH_STYLE, LIVE_CSV, NAIVE_PRICE, VOL_VMAX, load_master,
+from app_core import (FIG_REPORT, LIVE_CSV, NAIVE_PRICE, VOL_VMAX, load_master,
                       load_price)
 
 # Heavy imports (torch) live only on this page, so the story pages load fast.
@@ -18,19 +18,9 @@ st.markdown(
 
 # ---------------- live pipeline ----------------
 st.subheader("How fresh data reaches this page")
-st.graphviz_chart(f"""
-digraph {{
-    {GRAPH_STYLE}
-    cron [label="GitHub Actions\\ncron 23:30 UTC Mon-Fri\\n(06:30 Vietnam, after the\\nFX daily candle closes)"];
-    upd  [label="update_data.py\\npull yfinance / FRED / ECB / COT"];
-    bld  [label="build_master_dataset()\\nleak fix applied automatically"];
-    feat [label="recompute the same 31 features\\n(code identical to NB04)"];
-    chk  [label="consistency check\\nlive vs frozen on overlapping days", fillcolor="#3a2f1b"];
-    csv  [label="fx_features_live.csv\\ncommitted to the repo"];
-    dep  [label="Streamlit Cloud\\nauto-redeploys on push"];
-    cron -> upd -> bld -> feat -> chk -> csv -> dep;
-}}
-""")
+_, _mid, _ = st.columns([1, 2, 1])
+with _mid:
+    st.image(str(FIG_REPORT / "pipeline_daily.png"), width="stretch")
 st.markdown(
     "The amber node is the trust step: on every run, the freshly-built "
     "features are compared against the frozen research snapshot on all "

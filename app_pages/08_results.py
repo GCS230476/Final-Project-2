@@ -5,7 +5,8 @@ import streamlit as st
 from app_core import (AMBER_BG, BASE_DIR_DAILY, BASE_DIR_WEEKLY,
                       BASE_VOL_CLF, BASE_VOL_MAE, BASE_VOL_MAE_MEDIAN,
                       C_BASE, C_DL, C_DL2, C_GRAY, C_ML, C_ML2, FIG_MODELS,
-                      GREEN_BG, LIT_CEILING, NAIVE_PRICE, RED_BG, VOL_HORIZON,
+                      FIG_REPORT, GREEN_BG, LIT_CEILING, NAIVE_PRICE, RED_BG,
+                      VOL_HORIZON,
                       VOL_VMAX, fig_card, hl_vs_baseline, load_interval,
                       load_price, load_results, next_chapter, verdict)
 
@@ -16,6 +17,17 @@ st.markdown(
     ":green-badge[green] beats its baseline, :red-badge[red] does not, and "
     ":orange-badge[amber] marks the champion chosen on validation."
 )
+
+with st.expander("The whole study on one page", icon=":material/account_tree:"):
+    _, _mid, _ = st.columns([1, 3, 1])
+    with _mid:
+        st.image(str(FIG_REPORT / "pipeline_research.png"), width="stretch")
+    st.caption(
+        "Everything upstream of the fan-out is shared: the same four sources, "
+        "the same 31 features, the same chronological split, the same five "
+        "algorithms. Only the question changes. That is what makes the four "
+        "verdicts comparable."
+    )
 
 res = load_results()
 price = load_price()

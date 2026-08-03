@@ -1,5 +1,6 @@
 {
   "best_model": "Random Forest",
+  "best_on_validation": "Random Forest",
   "tolerances": [
     30,
     40,

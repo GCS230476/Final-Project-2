@@ -1,7 +1,8 @@
 import pandas as pd
 import streamlit as st
 
-from app_core import FIG_EDA, GRAPH_STYLE, fig_card, load_master, next_chapter
+from app_core import (AMBER_NODE, FIG_EDA, GRAPH_STYLE_LIGHT, GREEN_NODE,
+                      fig_card, load_master, next_chapter)
 
 st.markdown(
     "A model is only as honest as its data. This chapter covers what was "
@@ -75,25 +76,20 @@ st.dataframe(sources, hide_index=True, width="stretch")
 st.subheader("The pipeline")
 st.graphviz_chart(f"""
 digraph {{
-    {GRAPH_STYLE}
-    yf   [label="Yahoo Finance\\n4 price series"];
-    fred [label="FRED\\n13 macro series"];
-    ecb  [label="ECB\\n4 rate series"];
-    cot  [label="CFTC COT\\n2 positioning series"];
-    build [label="build_master_dataset()\\n· yfinance calendar = backbone\\n· left-merge FRED / ECB / COT\\n· forward-fill non-daily series\\n· ALIGNMENT FIX (chapter 3)", fillcolor="#3a2f1b"];
-    master [label="fx_master_dataset.csv\\n~4,150 rows x 24 cols"];
-    feats [label="Feature engineering (NB04)\\n31 features + 2 targets"];
-    fx    [label="fx_features.csv\\n(frozen snapshot)"];
-    models [label="20 trained models\\n4 tasks x 5 algorithms"];
-    app   [label="This dashboard"];
-    actions [label="GitHub Actions\\ncron, weekday mornings", fillcolor="#1b3a2f"];
-    update  [label="update_data.py\\nre-pull + rebuild + consistency check", fillcolor="#1b3a2f"];
-    live    [label="fx_features_live.csv", fillcolor="#1b3a2f"];
+    {GRAPH_STYLE_LIGHT}
+    src [label="FOUR INDEPENDENT DATA SOURCES\\nYahoo Finance (4 price) · FRED (13 macro)\\nECB (4 rate) · CFTC COT (2 positioning)"];
+    build [label="build_master_dataset()\\nyfinance calendar as the backbone\\nleft-merge FRED / ECB / COT\\nforward-fill the non-daily series\\nALIGNMENT FIX (chapter 3)", {AMBER_NODE}];
+    master [label="fx_master_dataset.csv\\n~4,150 rows x 24 columns"];
+    feats  [label="Feature engineering (NB04)\\n31 features + 2 targets"];
+    fx     [label="fx_features.csv\\nthe frozen research snapshot"];
+    models [label="26 trained models\\nfive algorithms on every task, plus Ridge on price"];
+    app    [label="This dashboard"];
+    update [label="update_data.py\\nre-pull, rebuild, consistency check\\n(GitHub Actions, weekday mornings)", {GREEN_NODE}];
+    live   [label="fx_features_live.csv", {GREEN_NODE}];
 
-    yf -> build; fred -> build; ecb -> build; cot -> build;
-    build -> master -> feats -> fx -> models -> app;
-    actions -> update -> live -> app;
-    update -> build [style=dashed, label="reuses"];
+    src -> build -> master -> feats -> fx -> models -> app;
+    update -> live -> app;
+    update -> build [style=dashed, label="reuses the same builder"];
 }}
 """)
 st.caption(

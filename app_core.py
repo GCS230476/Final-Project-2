@@ -18,6 +18,7 @@ MODELS_DIR = ROOT / "models"
 FIG_MODELS = ROOT / "figures" / "models"
 FIG_EDA = ROOT / "figures" / "eda"
 FIG_FEATURES = ROOT / "figures" / "features"
+FIG_REPORT = ROOT / "figures" / "report"      # the two hand-drawn pipelines
 MASTER_CSV = ROOT / "data" / "interim" / "fx_master_dataset.csv"
 FEATURES_CSV = ROOT / "data" / "processed" / "fx_features.csv"
 LIVE_CSV = ROOT / "data" / "processed" / "fx_features_live.csv"
@@ -236,3 +237,18 @@ GRAPH_STYLE = """
     edge [color="#8892a6", fontcolor="#aab2c0", fontname="Helvetica",
           fontsize=9];
 """
+
+# Top-to-bottom on white, matching the two pipeline figures in the report.
+GRAPH_STYLE_LIGHT = """
+    bgcolor="white";
+    rankdir=TB;
+    nodesep=0.35;
+    ranksep=0.45;
+    node [style="filled,rounded", shape=box, fillcolor="#DCE9F9",
+          color="#7BA7D7", fontcolor="#1F2933", fontname="Helvetica",
+          fontsize=11, margin="0.20,0.14"];
+    edge [color="#5A6572", fontcolor="#5A6572", fontname="Helvetica",
+          fontsize=9];
+"""
+AMBER_NODE = 'fillcolor="#FCE8CF", color="#D9903C"'   # the trust / fix steps
+GREEN_NODE = 'fillcolor="#DDF0E0", color="#4C9A5B"'   # the live pipeline

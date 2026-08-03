@@ -11,13 +11,16 @@ st.markdown(
     "> This project asks whether machine learning can forecast the "
     "**EUR/USD** exchange rate, and answers it honestly. Using **22 "
     "financial and economic series** turned into **31 engineered "
-    "features**, it trains **20 models** (5 algorithms × 4 tasks) to "
-    "predict two different things about tomorrow: the **direction** of the "
-    "move and its **volatility**. The headline finding is a deliberate "
+    "features**, it trains **26 models** (five algorithms on every task, "
+    "plus Ridge on price) to predict three different things about tomorrow: "
+    "the **direction** of the move, its **volatility**, and the **closing "
+    "price** itself. The headline finding is a deliberate "
     "contrast — :red[**direction is essentially unpredictable**] "
     "(~50–54%, at the coin-flip wall the Efficient Market Hypothesis "
-    "predicts), while :green[**volatility is genuinely forecastable**] "
-    "(beats every naive baseline). Along the way, the project uncovered "
+    "predicts) and :red[**the price forecast never beats "
+    "'tomorrow = today'**], while :green[**volatility is genuinely "
+    "forecastable**] (beats every naive baseline). Along the way, the "
+    "project uncovered "
     "and fixed a **data-leak bug** that had faked 86% accuracy — that "
     "investigation, in chapter 3, is the core research contribution."
 )
@@ -27,8 +30,9 @@ with st.container(border=True):
     a.metric("Data series", "22", help="From Yahoo Finance, FRED, ECB, "
              "CFTC — four independent sources.")
     b.metric("Engineered features", "31", help="In 6 groups, chapter 5.")
-    c.metric("Models trained", "20", help="RF, XGBoost, LightGBM, LSTM, "
-             "GRU × 4 tasks.")
+    c.metric("Models trained", "26", help="RF, XGBoost, LightGBM, LSTM and "
+             "GRU on every task, plus Ridge on price. 21 are serialised to "
+             "disk; the price task keeps only its champion.")
     d.metric("Years of data", "16", help="2010 to today, ~4,150 "
              "trading days.")
 
